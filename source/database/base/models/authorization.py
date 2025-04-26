@@ -22,6 +22,9 @@ from sqlalchemy.orm import (
 )
 
 from database import Base
+from database import account_validators
+from database.security.passwords import hash_password, verify_password
+from database.security.utils import generate_secure_token
 
 class UserGroupsEnum(str, enum.Enum):
     USER = "user"
@@ -78,3 +81,21 @@ class UserProfileModel(Base):
     gender: Mapped[Optional[UserGenderEnum]] = mapped_column(Enum(UserGenderEnum))
     date_of_birth: Mapped[Optional[date]] = mapped_column(Date)
     info: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class TokenBaseModel(Base):
+    __abstract__ = True
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, authoincrement=True)
+    token: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+        default=generate_secure_token
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default= lambda: datetime.now(timezone.utc) + timedelta(days=1)
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
