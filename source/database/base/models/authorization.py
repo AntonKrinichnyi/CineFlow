@@ -60,4 +60,21 @@ class UserModel(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False)
-    group: Mapped["UserGroupModel"] = relationship("UserGroupModel", back_populates="users")
+    group: Mapped["UserGroupModel"] = relationship("UserGroupModel", back_populates="user")
+    profile: Mopped["UserProfileModel"] = relationship(
+        "UserProfileModel",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+
+class UserProfileModel(Base):
+    __tablename__ = "user_profiles"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, authoincrement=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(100))
+    last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    avatar: Mapped[Optional[str]] = mapped_column(String(255))
+    gender: Mapped[Optional[UserGenderEnum]] = mapped_column(Enum(UserGenderEnum))
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date)
+    info: Mapped[Optional[str]] = mapped_column(Text)
