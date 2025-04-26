@@ -61,7 +61,7 @@ class UserModel(Base):
     )
     group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False)
     group: Mapped["UserGroupModel"] = relationship("UserGroupModel", back_populates="user")
-    profile: Mopped["UserProfileModel"] = relationship(
+    profile: Mapped["UserProfileModel"] = relationship(
         "UserProfileModel",
         back_populates="user",
         cascade="all, delete-orphan"
