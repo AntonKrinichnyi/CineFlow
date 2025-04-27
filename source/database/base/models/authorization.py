@@ -109,6 +109,8 @@ class UserProfileModel(Base):
     gender: Mapped[Optional[UserGenderEnum]] = mapped_column(Enum(UserGenderEnum))
     date_of_birth: Mapped[Optional[date]] = mapped_column(Date)
     info: Mapped[Optional[str]] = mapped_column(Text)
+    
+    __table_args__ = (UniqueConstraint("user_id"),)
 
 
 class TokenBaseModel(Base):
