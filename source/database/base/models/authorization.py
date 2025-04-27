@@ -69,6 +69,24 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    
+    def __repr__(self):
+        return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})"
+    
+    @classmethod
+    def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
+        user = cls(email=email, group_id=group_id)
+        user.password = raw_password
+        return user
+    
+    @property
+    def password(self) -> None:
+        raise AttributeError("Password is write only. Use the setter to set the password")
+    
+    @password.setter
+    def password(self, raw_password: str) -> None:
+        account_validators.validate_password_strength(raw_password)
+        self._hashed_password = hash_password(raw_password)
 
 
 class UserProfileModel(Base):
