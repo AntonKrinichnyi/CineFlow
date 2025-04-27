@@ -87,6 +87,16 @@ class UserModel(Base):
     def password(self, raw_password: str) -> None:
         account_validators.validate_password_strength(raw_password)
         self._hashed_password = hash_password(raw_password)
+    
+    def verify_password(self, raw_password: str) -> bool:
+        return verify_password(raw_password, self._hashed_password)
+    
+    @account_validators("email")
+    def validate_email(self, key, value):
+        return account_validators.validate_email(value.lower())
+    
+    def has_group(self, group_name: UserGroupsEnum) -> bool:
+        return self.group.name == group_name
 
 
 class UserProfileModel(Base):
