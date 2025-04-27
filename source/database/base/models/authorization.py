@@ -165,4 +165,15 @@ class RefreshTokenModel(TokenBaseModel):
         return cls(user_id=user_id, expires_at=expires_at, token=token)
     
     def __repr__(self):
-        return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})"
+        return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+
+
+class PasswordResetTokenModel(TokenBaseModel):
+    __tablename__ = "passwrod_reset_token"
+    
+    user: Mapped[UserModel] = relationship("UserModel", back_populates="password_reset_token")
+    
+    __table_args__ = (UniqueConstraint("user_id"),)
+    
+    def __repr__(self):
+        return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
