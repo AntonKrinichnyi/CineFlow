@@ -71,7 +71,7 @@ class UserModel(Base):
     )
     
     def __repr__(self):
-        return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})"
+        return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
     
     @classmethod
     def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
@@ -111,6 +111,12 @@ class UserProfileModel(Base):
     info: Mapped[Optional[str]] = mapped_column(Text)
     
     __table_args__ = (UniqueConstraint("user_id"),)
+    
+    def __repr__(self):
+        return (
+            f"<UserProfileModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name})"
+            f"gender={self.gender}, date_of_birth={self.date_of_birth}>"
+        )
 
 
 class TokenBaseModel(Base):
@@ -129,3 +135,14 @@ class TokenBaseModel(Base):
         default= lambda: datetime.now(timezone.utc) + timedelta(days=1)
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+
+class ActivationTokenModel(TokenBaseModel):
+    __tablename__ = "activation_tokens"
+    
+    user = Mapped[UserModel] = relationship("UserModel", back_populates="activation_token")
+    
+    __table_args__ = (UniqueConstraint("user_id"),)
+    
+    def __repr__(self):
+        return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
