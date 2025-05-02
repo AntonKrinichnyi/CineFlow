@@ -15,7 +15,8 @@ from source.shemas.accounts import (
     UserRegistrationRequestShema,
     MessageResponseShema,
     UserActivationRequestShema,
-    PasswordResetRequestShema
+    PasswordResetRequestShema,
+    PasswordResetCompleteRequestShema
 )
 from source.database.base.models.accounts import (
     UserModel,
@@ -193,7 +194,7 @@ async def active_account(
 @router.post(
     "/password-reset/request/",
     response_model=MessageResponseShema,
-    summaru="Reques password reset token."
+    summary="Reques password reset token.",
     description=(
             "Allows a user to request a password reset token. If the user exists and is active, "
             "a new token will be generated and any existing tokens will be invalidated."
@@ -230,5 +231,105 @@ async def request_password_reset_token(
     return MessageResponseShema(
         message="If you are registered, you will receive an email with instructions."
     )
+
+
+@router.post(
+    "/reset-password/complete/",
+    response_model=MessageResponseShema,
+    summary="Reset user password",
+    description="Reset a user's password if a valid token is provided.",
+    status_code=status.HTTP_200_OK,
+    responses= {
+        400: {
+            "description": (
+                 "Bad Request - The provided email or token is invalid, "
+                "the token has expired, or the user account is not active."
+            ),
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "invalid_email_or_token": {
+                            "summary": "Invalid email or token.",
+                            "value": {
+                                "detail": "Invalid email or token."
+                            }
+                        },
+                        "expires_token": {
+                            "summary": "Token is expired",
+                            "value": {
+                                "detail": "Invalid email or token."
+                            }
+                        }
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred while resetting the password.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred while resetting the password."
+                    }
+                }
+            },
+        },
+    },
+)
+async def reset_password(
+    data: PasswordResetCompleteRequestShema,
+    db: AsyncSession = Depends(get_sqlite_db),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator)
+) -> MessageResponseShema:
+    stmt = select(UserModel).filter_by(email=data.email)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
     
+    stmt = select(PasswordResetTokenModel).filter_by(user_id=user.id)
+    result = await db.execute(stmt)
+    token_record = result.scalars().first()
     
+    if not token_record or token_record.token != data.token:
+        if token_record:
+            await db.run_sync(lambda s: s.delete(token_record))
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+    
+    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        await db.run_sync(lambda s: s.delete(token_record))
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token"
+        )
+    
+    try:
+        user.password = data.password
+        await db.run_sync(lambda s: s.delete(token_record))
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback(),
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password."
+        )
+
+    login_link = "http://127.0.0.1/accounts/login/"
+    
+    await EmailSender.send_password_reset_complete_email(
+        str(data.email),
+        login_link
+    )
+    
+    return MessageResponseShema(
+        message="Password reset successfuly"
+    )
