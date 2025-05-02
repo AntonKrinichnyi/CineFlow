@@ -7,12 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from source.config.dependencies import get_settings
+from source.config.dependencies import get_settings, get_accounts_email_notificator
 from source.config.settings import BaseAppSetinggs
 from database.session_sqlite import get_sqlite_db
 from source.shemas.accounts import (
     UserRegistrationResponseShema,
-    UserRegistrationRequestShema
+    UserRegistrationRequestShema,
+    MessageResponseShema,
+    UserActivationRequestShema
 )
 from source.database.base.models.accounts import (
     UserModel,
@@ -21,6 +23,7 @@ from source.database.base.models.accounts import (
     ActivationTokenModel
 )
 from source.notifications.email_sender import EmailSender
+from source.notifications.interfaces import EmailSenderInterface
 router = APIRouter()
 
 
@@ -105,3 +108,83 @@ async def register_user(
         
         return UserRegistrationResponseShema.model_validate(new_user)
 
+
+@router.post(
+    "/activate/",
+    response_model=MessageResponseShema,
+    summary="Activate user account.",
+    description="Activate a user's account using their email and activation token.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {
+            "description": "Bad request - The activation token is invalid or expired, "
+                           "or the user account is already active.",
+            "content": {
+                "aplication/json": {
+                    "examples": {
+                        "invalid_token": {
+                            "summary": "Invalid token",
+                            "value": {
+                                "detail": "Invalid or expired activation token."
+                            }
+                        },
+                        "already_active": {
+                            "summary": "Account already active.",
+                            "value": {
+                                "detail": "User account is already active."
+                            }
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
+async def active_account(
+    activation_data: UserActivationRequestShema,
+    db: AsyncSession = Depends(get_sqlite_db),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+) -> MessageResponseShema:
+    stmt = (
+        select(ActivationTokenModel)
+        .options(joinedload(ActivationTokenModel.user))
+        .join(UserModel)
+        .where(
+            UserModel.email == activation_data.email,
+            ActivationTokenModel.token == activation_data.token
+        )
+    )
+    result = await db.execute(stmt)
+    token_record = result.scalars().first()
+    
+    now_utc = datetime.now(datetime.timezone.utc)
+    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=datetime.timezone.utc) < now_utc:
+        if token_record:
+            await db.delete(token_record)
+            await db.commit()
+        raise HTTPException(
+            status=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation token."
+        )
+        
+    user = token_record.user
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already active."
+        )
+    
+    user.is_active = True
+    await db.delete(token_record)
+    await db.commit()
+    
+    login_link = "http://127.0.0.1/accounts/login/"
+    
+    await EmailSender.send_activation_complete_email(
+        str(activation_data.email),
+        login_link
+    )
+    
+    return MessageResponseShema(message="User account activated succesfuly.")
+    
+    

@@ -53,7 +53,7 @@ class UserRegistrationResponseShema(BaseModel):
     }
 
 
-class UserActivationRquestShema(BaseModel):
+class UserActivationRequestShema(BaseModel):
     email: EmailStr
     token: str
 
