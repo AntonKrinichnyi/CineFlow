@@ -14,13 +14,15 @@ from source.shemas.accounts import (
     UserRegistrationResponseShema,
     UserRegistrationRequestShema,
     MessageResponseShema,
-    UserActivationRequestShema
+    UserActivationRequestShema,
+    PasswordResetRequestShema
 )
 from source.database.base.models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupsEnum,
-    ActivationTokenModel
+    ActivationTokenModel,
+    PasswordResetTokenModel
 )
 from source.notifications.email_sender import EmailSender
 from source.notifications.interfaces import EmailSenderInterface
@@ -186,5 +188,47 @@ async def active_account(
     )
     
     return MessageResponseShema(message="User account activated succesfuly.")
+
+
+@router.post(
+    "/password-reset/request/",
+    response_model=MessageResponseShema,
+    summaru="Reques password reset token."
+    description=(
+            "Allows a user to request a password reset token. If the user exists and is active, "
+            "a new token will be generated and any existing tokens will be invalidated."
+    ),
+    status_code=status.HTTP_200_OK,
+)
+async def request_password_reset_token(
+    data: PasswordResetRequestShema,
+    db: AsyncSession = Depends(get_sqlite_db),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator)
+) -> MessageResponseShema:
+    stmt = select(UserModel).filter_by(email=data.email)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    
+    if not user or not user.is_active:
+        return MessageResponseShema(
+            message="If you are registered, you will receive an email with instructions."
+        )
+    
+    await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
+    
+    reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
+    db.add(reset_token)
+    await db.commit()
+    
+    password_reset_complete_link = "http://127.0.0.1/accounts/password-reset-complete/"
+    
+    await EmailSender.send_password_reset_email(
+        str(data.email),
+        password_reset_complete_link
+    )
+    
+    return MessageResponseShema(
+        message="If you are registered, you will receive an email with instructions."
+    )
     
     
