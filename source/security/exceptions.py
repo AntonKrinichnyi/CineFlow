@@ -13,3 +13,6 @@ class TokenExpiredError(BaseSecurityError):
 class InvalidTokenError(BaseSecurityError):
     def __init__(self, message="Invalid token."):
         super().__init__(message)
+
+class BaseEmailError(Exception):
+    pass
