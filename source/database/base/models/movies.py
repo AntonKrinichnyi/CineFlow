@@ -231,4 +231,19 @@ class RatingModel(Base):
     
     user: Mapped[UserModel] = relationship("UserModel", back_populates="ratings")
     movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="ratings")
+
+
+class LikeModel(Base):
+    __tablename__ = "likes"
     
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+
+
+class DislikeModel(Base):
+    __tablename__ = "dislikes"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
