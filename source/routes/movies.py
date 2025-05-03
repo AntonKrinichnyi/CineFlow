@@ -12,7 +12,11 @@ from source.database.base.models.movies import (
     GenreModel,
     StarModel,
     DirectorModel,
-    CertificationModel
+    CertificationModel,
+    LikeModel,
+    DislikeModel,
+    RatingModel,
+    CommentModel
 )
 from source.shemas.movies import (
     MovieListItemShema,
@@ -264,3 +268,70 @@ async def create_movie(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid input data."
         )
+
+
+@router.get(
+    "/movies/{movie_id}/",
+    response_model=MovieDetailShema,
+    summary="Get movie details by ID",
+    description=(
+            "<h3>Fetch detailed information about a specific movie by its unique ID. "
+            "This endpoint retrieves all available details for the movie, such as "
+            "its name, genre, crew, budget, and revenue. If the movie with the given "
+            "ID is not found, a 404 error will be returned.</h3>"
+    ),
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        }
+    }
+)
+async def get_movie_by_id(
+        movie_id: int,
+        db: AsyncSession = Depends(get_sqlite_db),
+) -> MovieDetailShema:
+    stmt = select(MovieModel).where(MovieModel.id == movie_id).options(
+        joinedload(MovieModel.certification),
+        selectinload(MovieModel.genres),
+        selectinload(MovieModel.directors),
+        selectinload(MovieModel.stars),
+        selectinload(MovieModel.comments).joinedload(CommentModel.user),
+    )
+    result = await db.execute(stmt)
+    movie = result.scalar().first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie with the given ID was not found."
+        )
+
+    for comment in movie.comments:
+        comment.user_email = comment.user.email
+
+    stmt = select(func.count()).where(LikeModel.movie_id == movie_id)
+    result = await db.execute()
+    likes = result.scalar() or 0
+
+    stmt = select(func.count()).where(DislikeModel.movie_id == movie_id)
+    result = await db.execute(stmt)
+    dislikes = result.scalar() or 0
+
+    stmt = select(func.avg(RatingModel.rating)).where(RatingModel.movie_id == movie_id)
+    result = await db.execute(stmt)
+    rating = result.scalar()
+    if rating:
+        rating = round(float(rating), 1)
+
+    movie_detail = MovieDetailShema.model_validate(movie)
+    movie_detail.likes = likes
+    movie_detail.dislikes = dislikes
+    movie_detail.rating = rating
+
+    return movie_detail

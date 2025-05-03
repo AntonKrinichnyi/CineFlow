@@ -82,6 +82,9 @@ class MovieDetailShema(BaseModel):
     directors: list[DirectorShema]
     certification: CertificationShema
     comments: list[CommentShema]
+    likes: int
+    dislikes: int
+    rating: Optional[float] = None
     
     model_config = {
         "from_attributes": True,
