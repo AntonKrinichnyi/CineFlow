@@ -26,7 +26,7 @@ class UserRegistrationRequestShema(BaseEmailPasswordShema):
     pass
 
 
-class PasswordResetRequesShema(BaseModel):
+class PasswordResetRequestShema(BaseModel):
     email: EmailStr
 
 
