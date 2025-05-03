@@ -113,3 +113,18 @@ class MovieCreateShema(BaseModel):
     @classmethod
     def validate_list_friends(cls, value: list[str]) -> list[str]:
         return [item.title() for item in value]
+
+
+class MovieUpdateShema(BaseModel):
+    name: str | None = None
+    year: int | None = None
+    time: int | None = None
+    imdb: float | None = Field(None, ge=0, le=10)
+    meta_score: float | None = None
+    gross: float | None = None
+    description: str | None = None
+    price: float | None = Field(None, ge=0)
+    
+    model_config = {
+        "from_attributes": True,
+    }
