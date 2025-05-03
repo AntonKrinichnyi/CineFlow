@@ -83,3 +83,19 @@ class Genre(Base):
     
     def __repr__(self):
         return f"<Genre(name='{self.name}')>"
+
+
+class Star(Base):
+    __tablename__ = "stars"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    
+    movies: Mapped[list["Movie"]] = relationship(
+        "Movie",
+        secondary=MoviesStars,
+        back_populates="stars"
+    )
+    
+    def __repr__(self):
+        return f"<Star(name='{self.name}')>"
