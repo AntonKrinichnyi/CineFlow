@@ -17,7 +17,7 @@ from source.database.base.base import Base
 from source.database.base.models.accounts import UserModel
 
 
-MoviesGenres = Table(
+MoviesGenresModel = Table(
     "movie_genres",
     Base.metadata,
     Column(
@@ -34,7 +34,7 @@ MoviesGenres = Table(
     )
 )
 
-MoviesDirectors = Table(
+MoviesDirectorsModel = Table(
     "movie_directors",
     Base.metadata,
     Column(
@@ -51,7 +51,7 @@ MoviesDirectors = Table(
     )
 )
 
-MoviesStars = Table(
+MoviesStarsModel = Table(
     "movie_stars",
     Base.metadata,
     Column(
@@ -69,7 +69,7 @@ MoviesStars = Table(
 )
 
 
-class Genre(Base):
+class GenresModel(Base):
     __tablename__ = "genres"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -77,7 +77,7 @@ class Genre(Base):
     
     movies: Mapped[list["Movie"]] = relationship(
         "Movie",
-        secondary=MoviesGenres,
+        secondary=MoviesGenresModel,
         back_populates="genres"
     )
     
@@ -85,7 +85,7 @@ class Genre(Base):
         return f"<Genre(name='{self.name}')>"
 
 
-class Star(Base):
+class StarsModel(Base):
     __tablename__ = "stars"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -93,7 +93,7 @@ class Star(Base):
     
     movies: Mapped[list["Movie"]] = relationship(
         "Movie",
-        secondary=MoviesStars,
+        secondary=MoviesStarsModel,
         back_populates="stars"
     )
     
@@ -101,7 +101,7 @@ class Star(Base):
         return f"<Star(name='{self.name}')>"
 
 
-class Director(Base):
+class DirectorsModel(Base):
     __tablename__ = "directors"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -109,9 +109,24 @@ class Director(Base):
     
     movies: Mapped[list["Movie"]] = relationship(
         "Movie",
-        secondary=MoviesDirectors,
+        secondary=MoviesDirectorsModel,
         back_populates="directors"
     )
     
     def __repr__(self):
         return f"<Director(name='{self.name}')>"
+
+
+class CertificationsModel(Base):
+    __tablename__ = "certifications"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    
+    movies: Mapped[list["Movie"]] = relationship(
+        "Movie",
+        back_populates="certification"
+    )
+    
+    def __repr__(self):
+        return f"<Certification(name='{self.name}')>"
