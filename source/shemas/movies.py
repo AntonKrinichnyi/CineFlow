@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional, List
 
 from pydantic import BaseModel, field_validator, Field
 
@@ -124,6 +125,33 @@ class MovieUpdateShema(BaseModel):
     gross: float | None = None
     description: str | None = None
     price: float | None = Field(None, ge=0)
+    
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class MovieListItemShema(BaseModel):
+    id: int
+    name: str
+    year: int
+    time: int
+    imdb: float
+    genres: List[GenreShema]
+    directors: List[DirectorShema]
+    stars: List[StarShema]
+    
+    model_config = {
+        "from_attrinutes": True,
+    }
+
+
+class MovieListResponseShema(BaseModel):
+    movies: List[MovieListItemShema]
+    prev_page: Optional[str]
+    next_page: Optional[str]
+    total_pages: int
+    total_items: int
     
     model_config = {
         "from_attributes": True,
