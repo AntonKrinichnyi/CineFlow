@@ -194,3 +194,41 @@ class MovieModel(Base):
     
     def __repr__(self):
         return f"<Movie(name='{self.name}', release_year='{self.year}')>"
+
+
+class CommentModel(Base):
+    __tablename__ = "comments"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    user: Mapped[UserModel] = relationship("UserModel", back_populates="comments")
+    movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="comments")
+    
+
+class FavoriteModel(Base):
+    __tablename__ = "favorites"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    
+    user: Mapped[UserModel] = relationship("UserModel", back_populates="favorites")
+    movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="favorites")
+    
+    __table_args__ = (UniqueConstraint("user_id", "movie_id", name="unique_favorite"))
+
+
+class RatingModel(Base):
+    __tablename__ = "ratings"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    
+    user: Mapped[UserModel] = relationship("UserModel", back_populates="ratings")
+    movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="ratings")
+    
