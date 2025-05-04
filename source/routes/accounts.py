@@ -12,17 +12,17 @@ from source.config.dependencies import (get_settings,
                                         get_jwt_auth_manager)
 from source.config.settings import BaseAppSettings
 from database.session_sqlite import get_sqlite_db
-from source.shemas.accounts import (
-    UserRegistrationResponseShema,
-    UserRegistrationRequestShema,
-    MessageResponseShema,
-    UserActivationRequestShema,
-    PasswordResetRequestShema,
-    PasswordResetCompleteRequestShema,
-    UserLoginResponseShema,
-    UserLoginRequestShema,
-    TokenRefreshRequestShema,
-    TokenRefreshResponseShema
+from source.schemas.accounts import (
+    UserRegistrationResponseSchema,
+    UserRegistrationRequestSchema,
+    MessageResponseSchema,
+    UserActivationRequestSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema,
+    UserLoginResponseSchema,
+    UserLoginRequestSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema
 )
 from source.database.base.models.accounts import (
     UserModel,
@@ -42,7 +42,7 @@ router = APIRouter()
 
 @router.post(
     "register/",
-    response_model=UserRegistrationResponseShema,
+    response_model=UserRegistrationResponseSchema,
     summary="User Registration",
     description="Registerr a new user with an emil and password.",
     status_code=status.HTTP_201_CREATED,
@@ -70,9 +70,9 @@ router = APIRouter()
     }
 )
 async def register_user(
-    user_data: UserRegistrationRequestShema,
+    user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
-) -> UserRegistrationResponseShema:
+) -> UserRegistrationResponseSchema:
     stmt = select(UserModel).where(UserModel.email == user_data.email)
     result = await db.execute(stmt)
     existing_user = result.scalars().first()
@@ -119,12 +119,12 @@ async def register_user(
             activation_link
         )
         
-        return UserRegistrationResponseShema.model_validate(new_user)
+        return UserRegistrationResponseSchema.model_validate(new_user)
 
 
 @router.post(
     "/activate/",
-    response_model=MessageResponseShema,
+    response_model=MessageResponseSchema,
     summary="Activate user account.",
     description="Activate a user's account using their email and activation token.",
     status_code=status.HTTP_200_OK,
@@ -154,10 +154,10 @@ async def register_user(
     },
 )
 async def active_account(
-    activation_data: UserActivationRequestShema,
+    activation_data: UserActivationRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
-) -> MessageResponseShema:
+) -> MessageResponseSchema:
     stmt = (
         select(ActivationTokenModel)
         .options(joinedload(ActivationTokenModel.user))
@@ -198,12 +198,12 @@ async def active_account(
         login_link
     )
     
-    return MessageResponseShema(message="User account activated succesfuly.")
+    return MessageResponseSchema(message="User account activated succesfuly.")
 
 
 @router.post(
     "/password-reset/request/",
-    response_model=MessageResponseShema,
+    response_model=MessageResponseSchema,
     summary="Reques password reset token.",
     description=(
             "Allows a user to request a password reset token. If the user exists and is active, "
@@ -212,16 +212,16 @@ async def active_account(
     status_code=status.HTTP_200_OK,
 )
 async def request_password_reset_token(
-    data: PasswordResetRequestShema,
+    data: PasswordResetRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator)
-) -> MessageResponseShema:
+) -> MessageResponseSchema:
     stmt = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
     user = result.scalars().first()
     
     if not user or not user.is_active:
-        return MessageResponseShema(
+        return MessageResponseSchema(
             message="If you are registered, you will receive an email with instructions."
         )
     
@@ -238,14 +238,14 @@ async def request_password_reset_token(
         password_reset_complete_link
     )
     
-    return MessageResponseShema(
+    return MessageResponseSchema(
         message="If you are registered, you will receive an email with instructions."
     )
 
 
 @router.post(
     "/reset-password/complete/",
-    response_model=MessageResponseShema,
+    response_model=MessageResponseSchema,
     summary="Reset user password",
     description="Reset a user's password if a valid token is provided.",
     status_code=status.HTTP_200_OK,
@@ -287,10 +287,10 @@ async def request_password_reset_token(
     },
 )
 async def reset_password(
-    data: PasswordResetCompleteRequestShema,
+    data: PasswordResetCompleteRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator)
-) -> MessageResponseShema:
+) -> MessageResponseSchema:
     stmt = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
     user = result.scalars().first()
@@ -340,14 +340,14 @@ async def reset_password(
         login_link
     )
     
-    return MessageResponseShema(
+    return MessageResponseSchema(
         message="Password reset successfuly"
     )
 
 
 @router.post(
     "/login/",
-    response_model=UserLoginResponseShema,
+    response_model=UserLoginResponseSchema,
     summary="User login.",
     description="Authenticate a user and return access and refresh tokens.",
     status_code=status.HTTP_201_CREATED,
@@ -385,11 +385,11 @@ async def reset_password(
     },
 )
 async def login_user(
-    login_data: UserLoginRequestShema,
+    login_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
     settings: BaseAppSettings = Depends(get_settings),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager), 
-) -> UserLoginResponseShema:
+) -> UserLoginResponseSchema:
     stmt = select(UserModel).filter_by(email=login_data.email)
     result = db.execute(stmt)
     user = result.scalars().first()
@@ -425,7 +425,7 @@ async def login_user(
         )
     
     jwt_access_token = jwt_manager.create_access_token({"user_id": user.id})
-    return UserLoginResponseShema(
+    return UserLoginResponseSchema(
         access_token=jwt_access_token,
         refresh_token=jwt_refresh_token
     )
@@ -433,7 +433,7 @@ async def login_user(
 
 @router.post(
     "/refresh/",
-    response_model=TokenRefreshResponseShema,
+    response_model=TokenRefreshResponseSchema,
     summary="RefreshAccessToken",
     description="Refresh the access token using a valid refresh token.",
     status_code=status.HTTP_200_OK,
@@ -471,10 +471,10 @@ async def login_user(
     },
 )
 async def refresh_access_token(
-    token_data: TokenRefreshRequestShema,
+    token_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-) -> TokenRefreshResponseShema:
+) -> TokenRefreshResponseSchema:
     try:
         decoded_token = jwt_manager.decode_refresh_token(token_data.refresh_token)
         user_id = decoded_token.get("user_id")
@@ -504,4 +504,4 @@ async def refresh_access_token(
     
     new_access_token = jwt_manager.create_access_token({"user_id": user_id})
     
-    return TokenRefreshResponseShema(access_token=new_access_token)
+    return TokenRefreshResponseSchema(access_token=new_access_token)

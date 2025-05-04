@@ -20,14 +20,14 @@ from source.database.base.models.movies import (
     RatingModel,
     CommentModel
 )
-from source.shemas.movies import (
-    MovieListItemShema,
-    MovieListResponseShema,
-    MovieDetailShema,
-    MovieCreateShema,
-    MovieUpdateShema,
-    CommentShema,
-    CommentCreateShema
+from source.schemas.movies import (
+    MovieListItemSchema,
+    MovieListResponseSchema,
+    MovieDetailSchema,
+    MovieCreateSchema,
+    MovieUpdateSchema,
+    CommentSchema,
+    CommentCreateSchema
 )
 
 router = APIRouter()
@@ -35,7 +35,7 @@ router = APIRouter()
 
 @router.get(
     "/movies/",
-    response_model=MovieListResponseShema,
+    response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies",
     description=(
         "Get a paginated list of movies, and filter it by varios criteria"
@@ -73,7 +73,7 @@ async def get_movie_list(
         sort_by: str = Query(None, description="Sort by: price, year, imdb, votes"),
         genre: str = None,
         year: int = None,
-) -> MovieListResponseShema:
+) -> MovieListResponseSchema:
     stmt = select(MovieModel).distinct()
 
     if min_rating:
@@ -146,8 +146,8 @@ async def get_movie_list(
     ))
     movies = result.unique().scalars().all()
 
-    return MovieListResponseShema(
-        movies=[MovieListItemShema.model_validate(movie) for movie in movies],
+    return MovieListResponseSchema(
+        movies=[MovieListItemSchema.model_validate(movie) for movie in movies],
         prev_page=f"/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
         next_page=f"/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None,
         total_pages=total_pages,
@@ -157,7 +157,7 @@ async def get_movie_list(
 
 @router.post(
     "/movies/",
-    response_model=MovieDetailShema,
+    response_model=MovieDetailSchema,
     summary="Add movie",
     description=(
          "<h3>This endpoint allows clients to add a new movie to the database. "
@@ -180,9 +180,9 @@ async def get_movie_list(
     },
 )
 async def create_movie(
-        movie_data: MovieCreateShema,
+        movie_data: MovieCreateSchema,
         db: AsyncSession = Depends(get_sqlite_db)
-) -> MovieDetailShema:
+) -> MovieDetailSchema:
 
     stmt = select(MovieModel).where(
             and_(
@@ -262,7 +262,7 @@ async def create_movie(
         db.add(movie)
         await db.commit()
         await db.refresh(movie)
-        return MovieDetailShema.model_validate(
+        return MovieDetailSchema.model_validate(
             movie,
             ["genres", "directors", "stars"]
         )
@@ -277,7 +277,7 @@ async def create_movie(
 
 @router.get(
     "/movies/{movie_id}/",
-    response_model=MovieDetailShema,
+    response_model=MovieDetailSchema,
     summary="Get movie details by ID",
     description=(
             "<h3>Fetch detailed information about a specific movie by its unique ID. "
@@ -300,7 +300,7 @@ async def create_movie(
 async def get_movie_by_id(
         movie_id: int,
         db: AsyncSession = Depends(get_sqlite_db),
-) -> MovieDetailShema:
+) -> MovieDetailSchema:
     stmt = select(MovieModel).where(MovieModel.id == movie_id).options(
         joinedload(MovieModel.certification),
         selectinload(MovieModel.genres),
@@ -334,7 +334,7 @@ async def get_movie_by_id(
     if rating:
         rating = round(float(rating), 1)
 
-    movie_detail = MovieDetailShema.model_validate(movie)
+    movie_detail = MovieDetailSchema.model_validate(movie)
     movie_detail.likes = likes
     movie_detail.dislikes = dislikes
     movie_detail.rating = rating
@@ -416,7 +416,7 @@ async def delete_movie(
 )
 async def update_movie(
         movie_id: int,
-        movie_data: MovieUpdateShema,
+        movie_data: MovieUpdateSchema,
         db: AsyncSession = Depends(get_sqlite_db),
 ):
     stmt = select(MovieModel).where(MovieModel.id == movie_id).options(
@@ -496,7 +496,7 @@ async def update_movie(
             detail=str(IntegrityError)
         )
 
-    return MovieDetailShema.model_validate(movie)
+    return MovieDetailSchema.model_validate(movie)
 
 
 @router.post(
@@ -618,7 +618,7 @@ async def dislike_movie(
 
 @router.post(
     "/movies/{movie_id}/comments",
-    response_model=CommentShema,
+    response_model=CommentSchema,
     description="This endpoint create a new comment and save it in database.",
     responses={
         400: {
@@ -633,7 +633,7 @@ async def dislike_movie(
 )
 async def create_comment(
         movie_id: int,
-        comment_data: CommentCreateShema,
+        comment_data: CommentCreateSchema,
         db: AsyncSession = Depends(get_sqlite_db),
         current_user: UserModel = Depends(get_current_user),
 ):
@@ -666,7 +666,7 @@ async def create_comment(
 
 @router.get(
     "/movies/{movie_id}/comments",
-    response_model=list[CommentShema],
+    response_model=list[CommentSchema],
     description="Get a list of comments.",
     responses={
         404: {
@@ -693,3 +693,58 @@ async def get_comments(
     for comment in comments:
         comment.user_id = comment.user.id
     return comments
+
+
+@router.post(
+    "/movies/favorites/{movie_id}",
+    summary="Add movie to favorites",
+    description="Endpoing for add movies to favorite and save it in databse",
+    responses= {
+        400: {
+            "description": "Movie already in favorites.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie already in favorites."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        }
+    }
+)
+async def add_to_favorites(
+        movie_id: int,
+        db: AsyncSession = Depends(get_sqlite_db),
+        current_user: UserModel = Depends(get_current_user),
+):
+    movie = await db.get(MovieModel, movie_id)
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+
+    stmt =  (select(FavoriteModel).where(
+            and_(
+                FavoriteModel.user_id == current_user.id,
+                FavoriteModel.movie_id == movie_id
+            )))
+    result = await db.execute(stmt)
+    favorite_is_exist = result.scalars().first()
+    if favorite_is_exist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie is already in favorites."
+        )
+
+    favorite = FavoriteModel(user_id=current_user.id, movie_id=movie_id)
+    db.add(favorite)
+    await db.commit()
+
+    return {"detail": "Movie added to favorites"}
