@@ -786,3 +786,108 @@ async def remove_from_favorites(
     await db.delete(favorite)
     await db.commit()
     return {"detail": "Movie removed from favorites"}
+
+
+@router.get(
+    "/movies/favorites/",
+    response_model=FavoriteListResponseSchema,
+    summary=("Get favorite movies list with functions"
+             "of movie list, pagination, search, order."),
+    description="Get list of favorite movies",
+    responses= {
+        400: {
+            "description": "Invalid sort by parameter.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid sort by parameter."}
+                }
+            },
+        }
+    }
+)
+async def get_favorites(
+        page: int = Query(1, ge=1),
+        per_page: int = Query(10, ge=1, le=20),
+        year: int = None,
+        min_rating: float = Query(None, ge=0, le=10),
+        max_rating: float = Query(None, ge=0, le=10),
+        genre: str = None,
+        certification: str = None,
+        sort_by: str = Query(None),
+        search: str = None,
+        db: AsyncSession = Depends(get_sqlite_db),
+        current_user: UserModel = Depends(get_current_user),
+):
+    stmt = (
+        select(MovieModel)
+        .join(FavoriteModel)
+        .where(FavoriteModel.user_id == current_user.id)
+    )
+
+    if year:
+        stmt = stmt.where(MovieModel.year == year)
+
+    if min_rating:
+        stmt = stmt.where(MovieModel.imdb >= min_rating)
+
+    if max_rating:
+        stmt = stmt.where(MovieModel.imdb <= max_rating)
+
+    if genre:
+        stmt = stmt.join(MovieModel.genres).where(GenreModel.name == genre)
+
+    if certification:
+        stmt = stmt.join(MovieModel.certification).where(CertificationModel.name == certification)
+
+    if search:
+        stmt = stmt.join(MovieModel.directors).join(MovieModel.stars).where(
+            or_(
+                MovieModel.name.ilike(f"%{search}%"),
+                MovieModel.description.ilike(f"%{search}%"),
+                DirectorModel.name.ilike(f"%{search}%"),
+                StarModel.name.ilike(f"%{search}%")
+            )
+        )
+
+    if sort_by:
+        sort_mapping = {
+            "price": MovieModel.price,
+            "year": MovieModel.year,
+            "imdb": MovieModel.imdb,
+            "votes": MovieModel.votes,
+            "favorited": FavoriteModel.created_at
+        }
+        sort_field = sort_mapping.get(sort_by.lstrip("-"))
+        if sort_field is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid sort by parameter."
+            )
+
+        if sort_by.startswith("-"):
+            stmt = stmt.order_by(sort_field.desc())
+        else:
+            stmt = stmt.order_by(sort_field.asc())
+    else:
+        stmt = stmt.order_by(FavoriteModel.created_at.desc())
+
+    count_stmt = select(func.count()).select_from(stmt)
+    result = await db.execute(count_stmt)
+    total_items = result.scalars().first()
+
+    stmt = stmt.offset((page - 1) * per_page).limit(per_page)
+
+    result = await db.execute(stmt.options(
+        joinedload(MovieModel.certification),
+        selectinload(MovieModel.genres),
+        selectinload(MovieModel.directors),
+        selectinload(MovieModel.stars)
+    ))
+    movies = result.unique().scalars().all()
+
+    return FavoriteListResponseSchema(
+        movies=[FavoriteSchema.model_validate(movie) for movie in movies],
+        total_items=total_items,
+        total_pages=(total_items + per_page - 1) // per_page,
+        current_page=page
+    )
