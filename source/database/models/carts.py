@@ -56,7 +56,7 @@ class CartItemModel(Base):
             movie_id={self.movie_id}, added_at={self.added_at})>"
 
 
-class Purchased(Base):
+class PurchasedModel(Base):
     __tablename__ = "purchased"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
