@@ -662,3 +662,34 @@ async def create_comment(
         )
 
     return comment
+
+
+@router.get(
+    "/movies/{movie_id}/comments",
+    response_model=list[CommentShema],
+    description="Get a list of comments.",
+    responses={
+        404: {
+            "description": "Comment not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Comments with the given ID was not found."}
+                }
+            },
+        }
+    }
+)
+async def get_comments(
+        movie_id: int,
+        db: AsyncSession = Depends(get_sqlite_db),
+):
+    stmt = (select(CommentModel)
+           .where(CommentModel.movie_id == movie_id)
+           .options(joinedload(CommentModel.user))
+           .order_by(CommentModel.created_at.desc()))
+    result = await db.execute(stmt)
+    comments = result.scalars().all()
+
+    for comment in comments:
+        comment.user_id = comment.user.id
+    return comments
