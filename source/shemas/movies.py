@@ -67,12 +67,15 @@ class MovieBaseShema(BaseModel):
 class CommentShema(BaseModel):
     id: int
     user_id: int
-    comment: str
-    answers: list[int] | None = None
+    movie_id: int
     
     model_config = {
         "from_attributes": True,
     }
+
+
+class CommentCreateShema(BaseModel):
+    comment: str = Field(..., min_length=1, max_length=1000)
 
 
 class MovieDetailShema(BaseModel):

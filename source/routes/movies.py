@@ -25,7 +25,9 @@ from source.shemas.movies import (
     MovieListResponseShema,
     MovieDetailShema,
     MovieCreateShema,
-    MovieUpdateShema
+    MovieUpdateShema,
+    CommentShema,
+    CommentCreateShema
 )
 
 router = APIRouter()
@@ -612,3 +614,51 @@ async def dislike_movie(
     except IntegrityError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="Invalid input data.")
+
+
+@router.post(
+    "/movies/{movie_id}/comments",
+    response_model=CommentShema,
+    description="This endpoint create a new comment and save it in database.",
+    responses={
+        400: {
+            "description": "Can't create a new comment",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Can't create a new comment"}
+                }
+            },
+        },
+    }
+)
+async def create_comment(
+        movie_id: int,
+        comment_data: CommentCreateShema,
+        db: AsyncSession = Depends(get_sqlite_db),
+        current_user: UserModel = Depends(get_current_user),
+):
+    movie = await db.get(MovieModel, movie_id)
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movies not found"
+        )
+
+    comment = CommentModel(
+        comment=comment_data.content,
+        user_id=current_user.id,
+        movie_id=movie_id
+    )
+
+    try:
+        db.add(comment)
+        await db.commit()
+        await db.refresh(comment)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can't create a new comment"
+        )
+
+    return comment
