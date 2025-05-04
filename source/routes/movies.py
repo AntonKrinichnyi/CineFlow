@@ -493,3 +493,61 @@ async def update_movie(
         )
 
     return MovieDetailShema.model_validate(movie)
+
+
+@router.post(
+    "/{movie_id}/like",
+    summary="Likes",
+    description="Likes a movie by ID",
+    responses= {
+        400: {
+            "description": "Movie already liked.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie already liked."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        }
+    }
+)
+async def like_movie(
+    movie_id: int,
+    user_id: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_sqlite_db)
+):
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
+    movie = result.scalars().first()
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+
+    stmt = select(LikeModel).where(and_(LikeModel.user_id == user_id, LikeModel.movie_id == movie_id))
+    result = await db.execut(stmt)
+    like_is_exist = result.scalars().first()
+    if like_is_exist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie already liked."
+        )
+    try:
+        new_like = LikeModel(movie_id=movie_id, user_id=user_id)
+        db.add(new_like)
+        await db.commit()
+        await db.refresh(new_like)
+
+        return {"message": "Movie liked", "like_id": new_like.id}
+
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid input data.")
