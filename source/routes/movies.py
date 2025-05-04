@@ -751,3 +751,38 @@ async def add_to_favorites(
     await db.commit()
 
     return {"detail": "Movie added to favorites"}
+
+
+@router.delete(
+    "/movies/favorites/{movie_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Remove movie from favorites",
+    description="Endpoint for removing movies from favorite list.",
+    responses= {
+        404: {
+            "description": "Movie not found in favorites.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found in favorites."}
+                }
+            },
+        }
+    }
+)
+async def remove_from_favorites(
+        favorite_id: int,
+        db: AsyncSession = Depends(get_sqlite_db),
+        current_user: UserModel = Depends(get_current_user),
+):
+    stmt = select(FavoriteModel).where(FavoriteModel.id == favorite_id)
+    result = await db.execute(stmt)
+    favorite = result.scalars().first()
+    if not favorite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie with the given ID was not found in favorites."
+        )
+
+    await db.delete(favorite)
+    await db.commit()
+    return {"detail": "Movie removed from favorites"}
