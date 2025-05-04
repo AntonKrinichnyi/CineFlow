@@ -72,4 +72,11 @@ class EmailSender(EmailSenderInterface):
         html_content = template.render(email=email, reset_link=reset_link)
         subject = "Password reset request"
         await self._send_email(email, subject, html_content)
+    
+    async def send_remove_movie(self, email: str, movie_name: str, cart_id: int) -> None:
+        html_content = f"""
+            <p>Movie "{movie_name}" removed from cart with ID: {cart_id}</p>
+        """
+        subject = f"{movie_name} removed from cart with id: {cart_id}"
+        await self._send_email(email, subject, html_content)
         

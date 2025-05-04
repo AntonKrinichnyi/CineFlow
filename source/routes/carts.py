@@ -1,16 +1,19 @@
 from fastapi import (APIRouter,
                      Depends,
                      HTTPException,
-                     status)
+                     status,
+                     BackgroundTasks)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.exc import SQLAlchemyError
 
 from source.database.session_sqlite import get_sqlite_db
 from source.config.dependencies import get_current_user
-from source.database.models.accounts import UserModel, UserGroupsEnum
+from source.database.models.accounts import UserModel, UserGroupsEnum, UserGroupModel
 from source.database.models.movies import MovieModel
+from source.config.dependencies import get_accounts_email_notificator
 from source.schemas.carts import CartResponseSchema, CartItemResponseSchema
+from source.notifications.interfaces import EmailSenderInterface
 from source.database.models.carts import (PurchasedModel,
                                           CartModel,
                                           CartItemModel)
@@ -180,3 +183,181 @@ async def get_cart(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized."
         )
+
+
+@router.delete(
+    "/{cart_id}/clear/",
+    summary="Clear cart items.",
+    description="Clear a cart from all cart items.",
+    responses={
+        400: {
+            "description": "Cart is already empty.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cart is already empty."
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Cart not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cart not found."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Failed to clear cart",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Failed to clear cart"
+                    }
+                }
+            },
+        }
+    }
+)
+async def clear_cart(
+    db: AsyncSession = Depends(get_sqlite_db),
+    user_id: UserModel = Depends(get_current_user)
+):
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    stmt = select(CartModel).where(user_id == user_id)
+    result = await db.cxecute(stmt)
+    cart = result.scalar().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found."
+        )
+    if not cart.cart_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cart is already empty."
+        )
+
+    try:
+        for item in cart.cart_items:
+            await db.delete(item)
+        await db.commit()
+
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to clear cart."
+        )
+
+    return {"detail": "Cart cleared successfully."}
+
+
+@router.delete(
+    "/{cart_id}/{movie_id}/",
+    summary="Cart item remove",
+    description="Remove a cart item from cart.",
+    responses={
+        404: {
+            "description": "User not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Request failed.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Request failed."
+                    }
+                }
+            },
+        }
+    }
+)
+async def remove_movie_from_cart(
+    movie_id: int,
+    cart_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_sqlite_db),
+    user_id: int = Depends(get_current_user),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+):
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.cxecute(stmt)
+    movie = result.scalar().first()
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found."
+        )
+
+    stmt = select(CartModel).where(user_id == user_id)
+    result = await db.cxecute(stmt)
+    cart = result.scalar().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found."
+        )
+
+    stmt = select(CartItemModel).where(and_(cart_id == cart.id, movie_id == movie_id))
+    result = await db.cxecute(stmt)
+    cart_item = result.scalar().first()
+    if not cart_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart item not found."
+        )
+
+    try:
+        await db.delete(cart_item)
+        await db.commit()
+
+        stmt = (select(UserModel)
+                .join(UserGroupModel)
+                .filter(UserGroupModel == UserGroupsEnum.MODERATOR))
+        result = await db.execute(stmt)
+        moderators = result.scalar().all()
+        for moderator in moderators:
+            background_tasks.add_task(
+                email_sender.send_remove_movie,
+                moderator.email,
+                movie.name,
+                cart_id
+            )
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Request failed."
+        )
+
+    return {
+        "message": f"{movie.name} removed from cart id {cart.id} successfully"
+    }

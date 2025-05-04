@@ -1,12 +1,17 @@
 import os
 
-from fastapi import Depends
+from fastapi import Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError # type: ignore
 
 from config.settings import BaseAppSettings, Settings, TestSettings
+from source.security.utils import get_token
 from security.interfaces import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
 from notifications.interfaces import EmailSenderInterface
 from notifications.email_sender import EmailSender
+from source.database.models.accounts import UserModel
+from source.database.session_sqlite import get_sqlite_db
 
 def get_settings() -> BaseAppSettings:
     environment = os.getenv("ENVIRONMENT", "developing")
