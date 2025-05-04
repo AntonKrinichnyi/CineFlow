@@ -1,4 +1,5 @@
 import uuid
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select, func, and_
@@ -30,7 +31,8 @@ from source.schemas.movies import (
     CommentSchema,
     CommentCreateSchema,
     FavoriteListResponseSchema,
-    FavoriteSchema
+    FavoriteSchema,
+    GenreSchema
 )
 
 router = APIRouter()
@@ -891,3 +893,48 @@ async def get_favorites(
         total_pages=(total_items + per_page - 1) // per_page,
         current_page=page
     )
+
+
+@router.get(
+    "/genres/",
+    response_model=List[GenreSchema],
+    summary="Get list of genres.",
+    description="Endpoint get list of genres."    
+)
+async def get_genres(db: AsyncSession = Depends(get_sqlite_db)):
+    stmt = select(GenreModel).options(selectinload(GenreModel.movies))
+    result = await db.execute(stmt)
+    genres = result.scalars().all()
+    return [GenreSchema(id=genre.id, name=genre.name) for genre in genres]
+
+
+@router.post(
+    "/genres/",
+    response_model=GenreSchema,
+    summary="Create a new genre",
+    description="Create a new genre model",
+    responses= {
+        400: {
+            "description": "Genre is already exists.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Genre is already exists."}
+                }
+            },
+        }
+    }
+)
+async def create_genre(name: str, db: AsyncSession = Depends(get_sqlite_db)):
+    stmt = select(GenreModel).where(GenreModel.name == name)
+    result = await db.execute(stmt)
+    is_exist = result.scalar().first()
+    if is_exist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            description="Genre is already exists."
+        )
+
+    genre = GenreModel(name=name)
+    db.add(genre)
+    await db.commit()
+    return genre
