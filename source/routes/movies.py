@@ -553,3 +553,62 @@ async def like_movie(
     except IntegrityError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="Invalid input data.")
+
+
+@router.post(
+    "/{movie_id}/dislike",
+    summary="Dislikes",
+    description="Dislikes a movie by ID",
+    responses= {
+        400: {
+            "description": "Movie is already disliked.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie is already disliked."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        }
+    }
+)
+async def dislike_movie(
+    movie_id: int,
+    user_id: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_sqlite_db)
+):
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
+    movie = result.scalars().first()
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+
+    stmt = select(DislikeModel).where(and_(DislikeModel.user_id == user_id,
+                                           DislikeModel.movie_id == movie_id))
+    result = await db.execut(stmt)
+    dislike_is_exist = result.scalars().first()
+    if dislike_is_exist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie is already disliked."
+        )
+    try:
+        new_dislike = DislikeModel(movie_id=movie_id, user_id=user_id)
+        db.add(new_dislike)
+        await db.commit()
+        await db.refresh(new_dislike)
+
+        return {"message": "Movie disliked", "dislike_id": new_dislike.id}
+
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid input data.")
