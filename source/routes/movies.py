@@ -335,3 +335,47 @@ async def get_movie_by_id(
     movie_detail.rating = rating
 
     return movie_detail
+
+
+@router.delete(
+    "/movies/{movie_id}/",
+    summary="Delete a movie by ID",
+    description=(
+            "<h3>Delete a specific movie from the database by its unique ID.</h3>"
+            "<p>If the movie exists, it will be deleted. If it does not exist, "
+            "a 404 error will be returned.</p>"
+    ),
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {
+            "description": "Movie deleted successfully."
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+    },
+)
+async def delete_movie(
+        movie_id: int,
+        db: AsyncSession = Depends(get_sqlite_db),
+):
+
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
+    movie = result.scalars().first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie with the given ID was not found."
+        )
+
+    await db.delete(movie)
+    await db.commit()
+
+    return {"detail": "Movie deleted successfully."}
