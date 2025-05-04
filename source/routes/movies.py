@@ -22,7 +22,8 @@ from source.shemas.movies import (
     MovieListItemShema,
     MovieListResponseShema,
     MovieDetailShema,
-    MovieCreateShema
+    MovieCreateShema,
+    MovieUpdateShema
 )
 
 router = APIRouter()
