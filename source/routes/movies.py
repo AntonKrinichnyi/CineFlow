@@ -379,3 +379,116 @@ async def delete_movie(
     await db.commit()
 
     return {"detail": "Movie deleted successfully."}
+
+
+@router.patch(
+    "/movies/{movie_id}/",
+    summary="Update a movie by ID",
+    description=(
+            "<h3>Update details of a specific movie by its unique ID.</h3>"
+            "<p>This endpoint updates the details of an existing movie. If the movie with "
+            "the given ID does not exist, a 404 error is returned.</p>"
+    ),
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {
+            "description": "Movie updated successfully.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie updated successfully."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+    }
+)
+async def update_movie(
+        movie_id: int,
+        movie_data: MovieUpdateShema,
+        db: AsyncSession = Depends(get_sqlite_db),
+):
+    stmt = select(MovieModel).where(MovieModel.id == movie_id).options(
+            selectinload(MovieModel.genres),
+            selectinload(MovieModel.directors),
+            selectinload(MovieModel.stars)
+        )
+    result = await db.execute(stmt)
+    movie = result.scalar().first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+
+    for field, value in movie_data.model_dump(exclude_unset=True).items():
+        if field not in ["genres", "directors", "stars", "certification"]:
+            setattr(movie, field, value)
+
+    if movie_data.certification:
+        stmt = select(CertificationModel).where(CertificationModel.name == movie_data.certification)
+        result = await db.execute(stmt)
+        certificate = result.scalar_one_or_none()
+        if not certificate:
+            certificate = CertificationModel(name=movie_data.certification)
+            db.add(certificate)
+            await db.flush()
+        movie.certification_id = certificate.id
+
+    if movie_data.genres is not None:
+        genres = []
+        for genre_name in movie_data.genres:
+            stmt = select(GenreModel).where(GenreModel.name == genre_name)
+            result = await db.execute(stmt)
+            genre = result.scalar().first()
+            if not genre:
+                genre = GenreModel(name=genre_name)
+                db.add(genre)
+                await db.flush()
+            genres.append(genre)
+        movie.genres = genres
+
+    if movie_data.directors is not None:
+        directors = []
+        for director_name in movie_data.directors:
+            stmt = select(DirectorModel).where(DirectorModel.name == director_name)
+            result = await db.execute(stmt)
+            director = result.scalar().first()
+            if not director:
+                director = DirectorModel(name=director_name)
+                db.add(director)
+                await db.flush()
+            directors.append(director)
+        movie.directors = directors
+
+    if movie_data.stars is not None:
+        stars = []
+        for star_name in movie_data.stars:
+            stmt = select(StarModel).where(StarModel.name == star_name)
+            result = await db.execute(stmt)
+            star = result.scalar().first()
+            if not star:
+                star = StarModel(name=star_name)
+                db.add(star)
+                await db.flush()
+            stars.append(star)
+        movie.stars = stars
+
+    try:
+        await db.commit()
+        await db.refresh(movie)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(IntegrityError)
+        )
+
+    return MovieDetailShema.model_validate(movie)
