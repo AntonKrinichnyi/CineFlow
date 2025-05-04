@@ -54,3 +54,11 @@ class CartItemModel(Base):
     def __repr__(self):
         return f"<CartItem(id={self.id}, cart_id={self.cart_id},\
             movie_id={self.movie_id}, added_at={self.added_at})>"
+
+
+class Purchased(Base):
+    __tablename__ = "purchased"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
