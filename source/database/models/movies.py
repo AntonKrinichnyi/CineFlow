@@ -16,8 +16,8 @@ from sqlalchemy.sql.schema import (ForeignKey,
                                    Column,
                                    UniqueConstraint)
 
-from source.database.base.base import Base
-from source.database.base.models.accounts import UserModel
+from source.database.base import Base
+from source.database.models.accounts import UserModel
 
 
 MoviesGenresModel = Table(

@@ -3,7 +3,7 @@ from datetime import datetime
 from celery import Celery
 
 from source.notifications.celery import celery_app
-from source.database.base.models.accounts import ActivationTokenModel
+from source.database.models.accounts import ActivationTokenModel
 from source.database.session_sqlite import AsyncSQLiteSessionLocal
 
 app = Celery("tasks", backend="redis://localhost", broker="redis://localhost")

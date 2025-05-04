@@ -23,8 +23,8 @@ from sqlalchemy.orm import (
 
 from database import Base
 from database import account_validators
-from database.security.passwords import hash_password, verify_password
-from database.security.utils import generate_secure_token
+from source.security.passwords import hash_password, verify_password
+from source.security.utils import generate_secure_token
 
 class UserGroupsEnum(str, enum.Enum):
     USER = "user"

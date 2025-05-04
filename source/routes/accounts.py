@@ -24,7 +24,7 @@ from source.schemas.accounts import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema
 )
-from source.database.base.models.accounts import (
+from source.database.models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupsEnum,
