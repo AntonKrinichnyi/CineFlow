@@ -3,7 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 
-class CartItemResponse(BaseModel):
+class CartItemResponseSchema(BaseModel):
     id: int
     title: str
     price: float
@@ -11,6 +11,6 @@ class CartItemResponse(BaseModel):
     release_year: int
 
 
-class CartResponse(BaseModel):
+class CartResponseSchema(BaseModel):
     id: int
-    items: List[CartItemResponse]
+    items: List[CartItemResponseSchema]

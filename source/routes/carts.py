@@ -8,8 +8,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from source.database.session_sqlite import get_sqlite_db
 from source.config.dependencies import get_current_user
-from source.database.models.accounts import UserModel
+from source.database.models.accounts import UserModel, UserGroupsEnum
 from source.database.models.movies import MovieModel
+from source.schemas.carts import CartResponseSchema, CartItemResponseSchema
 from source.database.models.carts import (PurchasedModel,
                                           CartModel,
                                           CartItemModel)
@@ -107,4 +108,75 @@ async def create_cart(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid input data"
+        )
+
+
+@router.get(
+    "/{cart_id}/",
+    summary="Get movie from the cart",
+    description="Get cart item from cart",
+    response_model=CartResponseSchema,
+    responses={
+        403: {
+            "description": "Not authorized.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Not authorized."
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "User not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found."
+                    }
+                }
+            },
+        }
+    }
+)
+async def get_cart(
+    db: AsyncSession = Depends(get_sqlite_db),
+    user_id: UserModel = Depends(get_current_user)
+):
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    if user.group.name == UserGroupsEnum.ADMIN or user.id == user_id:
+        stmt = select(CartModel).where(user_id == user_id)
+        result = await db.cxecute(stmt)
+        cart = result.scalar().first()
+        if not cart:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Cart not found."
+            )
+        cart_items = cart.cart_items
+
+        movies_data = [
+            CartItemResponseSchema(
+                id=item.movie.id,
+                title=item.movie.name,
+                price=item.movie.price,
+                genre=[genre.name for genre in item.movie.genres],
+                release_year=item.movie.year
+            )
+            for item in cart_items if item.movie
+        ]
+
+        return CartResponseSchema(id=cart.id, items=movies_data)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized."
         )
