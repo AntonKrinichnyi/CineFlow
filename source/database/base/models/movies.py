@@ -7,6 +7,8 @@ from sqlalchemy.types import (
     String,
     Float,
     Integer,
+    DateTime,
+    func
 )
 from sqlalchemy.sql.schema import (ForeignKey,
                                    Table,
@@ -214,6 +216,9 @@ class FavoriteModel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     
     user: Mapped[UserModel] = relationship("UserModel", back_populates="favorites")
     movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="favorites")
