@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from source.database.session_sqlite import get_sqlite_db
+from source.config.dependencies import get_current_user
+from source.database.base.models.accounts import UserModel
 from source.database.base.models.movies import (
     MovieModel,
     GenreModel,

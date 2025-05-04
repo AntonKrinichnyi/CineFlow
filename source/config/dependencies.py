@@ -36,3 +36,27 @@ def get_accounts_email_notificator(
         password_email_template_name=settings.PASSWORD_RESET_TEMPLATE_NAME,
         password_complete_email_template_name=settings.PASSWORD_RESET_COMPLETE_TEMPLATE_NAME
     )
+
+
+async def get_current_user(
+        token: str = Depends(get_token),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        db: AsyncSession = Depends(get_sqlite_db)
+) -> UserModel:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Can't validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt_manager.decode_token(token)
+        user_id: int = int(payload.get("sub"))
+        if user_id is None:
+            raise credentials_exception
+    except (JWTError, ValueError, AttributeError):
+        raise credentials_exception
+
+    user = await db.get(UserModel, user_id)
+    if user is None:
+        raise credentials_exception
+    return user
