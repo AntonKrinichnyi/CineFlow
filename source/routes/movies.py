@@ -18,7 +18,8 @@ from source.database.base.models.movies import (
     LikeModel,
     DislikeModel,
     RatingModel,
-    CommentModel
+    CommentModel,
+    FavoriteModel
 )
 from source.schemas.movies import (
     MovieListItemSchema,
@@ -27,7 +28,9 @@ from source.schemas.movies import (
     MovieCreateSchema,
     MovieUpdateSchema,
     CommentSchema,
-    CommentCreateSchema
+    CommentCreateSchema,
+    FavoriteListResponseSchema,
+    FavoriteSchema
 )
 
 router = APIRouter()
