@@ -46,7 +46,8 @@ router = APIRouter()
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_201_CREATED
 )
 async def create_cart(
     movie_id: int,
@@ -62,8 +63,8 @@ async def create_cart(
             detail="User not found."
         )
 
-    stmt = select(PurchasedModel).where(and_(movie_id == movie_id,
-                                             user_id == user_id))
+    stmt = select(PurchasedModel).where(and_(PurchasedModel.movie_id == movie_id,
+                                             PurchasedModel.user_id == user_id))
     result = await db.cxecute(stmt)
     purchase = result.scalar().first()
     if purchase:
@@ -90,7 +91,8 @@ async def create_cart(
         await db.commit()
         await db.refresh(cart)
 
-    stmt = select(CartItemModel).where(and_(cart_id == cart.id, user_id == user_id))
+    stmt = select(CartItemModel).where(and_(CartItemModel.cart_id == cart.id,
+                                            CartItemModel.user_id == user_id))
     result = await db.cxecute(stmt)
     item_is_exist = result.scalar().first()
     if item_is_exist:
@@ -140,7 +142,8 @@ async def create_cart(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def get_cart(
     db: AsyncSession = Depends(get_sqlite_db),
@@ -220,7 +223,8 @@ async def get_cart(
                 }
             },
         }
-    }
+    },
+    satus_code=status.HTTP_200_OK
 )
 async def clear_cart(
     db: AsyncSession = Depends(get_sqlite_db),
@@ -289,7 +293,8 @@ async def clear_cart(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def remove_movie_from_cart(
     movie_id: int,

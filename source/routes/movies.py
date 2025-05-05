@@ -65,7 +65,8 @@ router = APIRouter()
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def get_movie_list(
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
@@ -183,6 +184,7 @@ async def get_movie_list(
             },
         }
     },
+    status_code=status.HTTP_201_CREATED
 )
 async def create_movie(
         movie_data: MovieCreateSchema,
@@ -525,7 +527,8 @@ async def update_movie(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def like_movie(
     movie_id: int,
@@ -583,7 +586,8 @@ async def like_movie(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def dislike_movie(
     movie_id: int,
@@ -634,7 +638,8 @@ async def dislike_movie(
                 }
             },
         },
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def create_comment(
         movie_id: int,
@@ -682,7 +687,8 @@ async def create_comment(
                 }
             },
         }
-    }
+    },
+    response_model=status.HTTP_200_OK
 )
 async def get_comments(
         movie_id: int,
@@ -721,7 +727,8 @@ async def get_comments(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def add_to_favorites(
         movie_id: int,
@@ -769,7 +776,8 @@ async def add_to_favorites(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_204_NO_CONTENT
 )
 async def remove_from_favorites(
         favorite_id: int,
@@ -805,7 +813,8 @@ async def remove_from_favorites(
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def get_favorites(
         page: int = Query(1, ge=1),
@@ -899,7 +908,8 @@ async def get_favorites(
     "/genres/",
     response_model=List[GenreSchema],
     summary="Get list of genres.",
-    description="Endpoint get list of genres."    
+    description="Endpoint get list of genres." ,
+    status_code=status.HTTP_200_OK   
 )
 async def get_genres(db: AsyncSession = Depends(get_sqlite_db)):
     stmt = select(GenreModel).options(selectinload(GenreModel.movies))
@@ -922,7 +932,8 @@ async def get_genres(db: AsyncSession = Depends(get_sqlite_db)):
                 }
             },
         }
-    }
+    },
+    status_code=status.HTTP_200_OK
 )
 async def create_genre(name: str, db: AsyncSession = Depends(get_sqlite_db)):
     stmt = select(GenreModel).where(GenreModel.name == name)

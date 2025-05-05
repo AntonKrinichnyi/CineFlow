@@ -79,4 +79,14 @@ class EmailSender(EmailSenderInterface):
         """
         subject = f"{movie_name} removed from cart with id: {cart_id}"
         await self._send_email(email, subject, html_content)
+    
+    async def send_email_payment_success(self, email: str, total_price: float, order_id: int, movies):
+        html_content = f"""
+        <p>Thank you for your purchase!</p>
+        Order ID: {order_id}
+        Total amount: {total_price}
+        Movies: {[movie for movie in movies]}
+    """
+        subject = f"Order Confirmation - Order ID: {order_id}"
+        await self._send_email(email, subject, html_content)
         
