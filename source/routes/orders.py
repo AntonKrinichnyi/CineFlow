@@ -194,3 +194,78 @@ async def cancel_order(user_id: int,
         message="Order canceled successfully",
         detail=None
     )
+
+
+@router.get(
+    "/order/{user_id}/",
+    summary="Get all orders for the user",
+    description="Get all orders for the user",
+    response_model=list[OrderBaseSchema],
+    responses={
+        404: {
+            "description": "User not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found"
+                        }
+                    }
+                }
+            }
+        }
+)
+async def get_orders(user_id: int,
+                      db: AsyncSession = Depends(get_sqlite_db)):
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="User not found")
+    
+    stmt = select(OrderModel).where(OrderModel.user_id == user_id)
+    result = await db.execute(stmt)
+    orders = result.scalars().all()
+    if not orders:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="No orders found")
+    
+    return [OrderBaseSchema.model_validate(
+        user_id=order.user_id,
+        total_amount=order.total_amount,
+        status=order.status
+    ) for order in orders]
+
+
+@router.get(
+    "/admin/orders/",
+    response_model=list[OrderBaseSchema],
+    summary="Get all orders",
+    description="Get all orders, with pagination, sorting, and filtering",
+)
+async def get_all_orders(
+    db: AsyncSession = Depends(get_sqlite_db),
+    page: int = 1,
+    limit: int = 10,
+    sort_by: str = "created_at",
+    sort_order: str = "asc",
+    status: str = None,
+):
+    stmt = select(OrderModel)
+    
+    if status:
+        stmt = stmt.where(OrderModel.status == status)
+    
+    if sort_order == "desc":
+        stmt = stmt.order_by(getattr(OrderModel, sort_by).desc())
+    else:
+        stmt = stmt.order_by(getattr(OrderModel, sort_by))
+    
+    result = await db.execute(stmt.offset((page - 1) * limit).limit(limit))
+    orders = result.scalars().all()
+    
+    return [OrderBaseSchema.model_validate(
+        user_id=order.user_id,
+        total_amount=order.total_amount,
+        status=order.status
+    ) for order in orders]
