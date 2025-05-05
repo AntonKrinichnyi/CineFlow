@@ -11,9 +11,9 @@ from sqlalchemy.types import (
     DECIMAL
 )
 
-from source.database.base.base import Base
-from source.database.base.models.accounts import UserModel
-from source.database.base.models.movies import MovieModel
+from source.database.base import Base
+from source.database.models.accounts import UserModel
+from source.database.models.movies import MovieModel
 
 
 class OrderStatusEnum(str, enum.Enum):
