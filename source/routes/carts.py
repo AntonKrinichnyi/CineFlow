@@ -149,7 +149,7 @@ async def get_cart(
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
-    user = result.scalar().first()
+    user = result.scalar_one_or_none()()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -158,8 +158,8 @@ async def get_cart(
 
     if user.group.name == UserGroupsEnum.ADMIN or user.id == user_id:
         stmt = select(CartModel).where(user_id == user_id)
-        result = await db.cxecute(stmt)
-        cart = result.scalar().first()
+        result = await db.execute(stmt)
+        cart = result.scalar_one_or_none()()
         if not cart:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -230,7 +230,7 @@ async def clear_cart(
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
-    user = result.scalar().first()
+    user = result.scalar_one_or_none()()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,8 +238,8 @@ async def clear_cart(
         )
 
     stmt = select(CartModel).where(user_id == user_id)
-    result = await db.cxecute(stmt)
-    cart = result.scalar().first()
+    result = await db.execute(stmt)
+    cart = result.scalar_one_or_none()()
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -304,7 +304,7 @@ async def remove_movie_from_cart(
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
-    user = result.scalar().first()
+    user = result.scalar_one_or_none()()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -312,8 +312,8 @@ async def remove_movie_from_cart(
         )
 
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
-    result = await db.cxecute(stmt)
-    movie = result.scalar().first()
+    result = await db.execute(stmt)
+    movie = result.scalar_one_or_none()()
     if not movie:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -321,8 +321,8 @@ async def remove_movie_from_cart(
         )
 
     stmt = select(CartModel).where(user_id == user_id)
-    result = await db.cxecute(stmt)
-    cart = result.scalar().first()
+    result = await db.execute(stmt)
+    cart = result.scalar_one_or_none()()
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -330,8 +330,8 @@ async def remove_movie_from_cart(
         )
 
     stmt = select(CartItemModel).where(and_(cart_id == cart.id, movie_id == movie_id))
-    result = await db.cxecute(stmt)
-    cart_item = result.scalar().first()
+    result = await db.execute(stmt)
+    cart_item = result.scalar_one_or_none()()
     if not cart_item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

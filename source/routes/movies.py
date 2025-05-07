@@ -475,7 +475,7 @@ async def update_movie(
         for genre_name in movie_data.genres:
             stmt = select(GenreModel).where(GenreModel.name == genre_name)
             result = await db.execute(stmt)
-            genre = result.scalar().first()
+            genre = result.scalar_one_or_none()()
             if not genre:
                 genre = GenreModel(name=genre_name)
                 db.add(genre)
@@ -488,7 +488,7 @@ async def update_movie(
         for director_name in movie_data.directors:
             stmt = select(DirectorModel).where(DirectorModel.name == director_name)
             result = await db.execute(stmt)
-            director = result.scalar().first()
+            director = result.scalar_one_or_none()()
             if not director:
                 director = DirectorModel(name=director_name)
                 db.add(director)
@@ -501,7 +501,7 @@ async def update_movie(
         for star_name in movie_data.stars:
             stmt = select(StarModel).where(StarModel.name == star_name)
             result = await db.execute(stmt)
-            star = result.scalar().first()
+            star = result.scalar_one_or_none()()
             if not star:
                 star = StarModel(name=star_name)
                 db.add(star)
@@ -970,7 +970,7 @@ async def get_genres(db: AsyncSession = Depends(get_sqlite_db)):
 async def create_genre(name: str, db: AsyncSession = Depends(get_sqlite_db)):
     stmt = select(GenreModel).where(GenreModel.name == name)
     result = await db.execute(stmt)
-    is_exist = result.scalar().first()
+    is_exist = result.scalar_one_or_none()()
     if is_exist:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
