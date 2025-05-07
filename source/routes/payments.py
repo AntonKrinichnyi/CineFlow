@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/payments/",
+    "/",
     response_model=list[PaymentResponseSchema],
     status_code=status.HTTP_200_OK,
     summary="Get all payments",
@@ -32,7 +32,7 @@ async def get_payments(user_id: int,
 
 
 @router.get(
-    "/payments/{payment_id}",
+    "/{payment_id}",
     response_model=PaymentResponseSchema,
     summary="Get payment by ID",
     description="Retrieve a specific payment by its ID.",

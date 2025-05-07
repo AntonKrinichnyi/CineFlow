@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/order/",
+    "/",
     summary="Create new order",
     description="Create a new order for the user",
     response_model=OrderBaseSchema,
@@ -122,7 +122,7 @@ async def create_order(data: OrderBaseSchema,
 
 
 @router.post(
-    "/order/cancel/",
+    "/cancel/",
     summary="Cencel the order",
     description="Cancel the order for the user",
     response_model=MessageSchema,
@@ -191,7 +191,7 @@ async def cancel_order(user_id: int,
 
 
 @router.get(
-    "/order/{user_id}/",
+    "/{user_id}/",
     summary="Get all orders for the user",
     description="Get all orders for the user",
     response_model=list[OrderBaseSchema],
@@ -268,7 +268,7 @@ async def get_all_orders(
 
 
 @router.post(
-    "/orders/{orders.id}/pay/",
+    "/{orders.id}/pay/",
     response_model=MessageSchema,
     summary="Pay for an order",
     description="Pay for an order using Stripe",

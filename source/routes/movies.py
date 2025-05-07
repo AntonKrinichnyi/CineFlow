@@ -38,7 +38,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/movies/",
+    "/",
     response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies",
     description=(
@@ -176,7 +176,7 @@ async def get_movie_list(
 
 
 @router.post(
-    "/movies/",
+    "/",
     response_model=MovieDetailSchema,
     summary="Add movie",
     description=(
@@ -300,7 +300,7 @@ async def create_movie(
 
 
 @router.get(
-    "/movies/{movie_id}/",
+    "/{movie_id}/",
     response_model=MovieDetailSchema,
     summary="Get movie details by ID",
     description=(
@@ -366,7 +366,7 @@ async def get_movie_by_id(
 
 
 @router.delete(
-    "/movies/{movie_id}/",
+    "/{movie_id}/",
     summary="Delete a movie by ID",
     description=(
             "<h3>Delete a specific movie from the database by its unique ID.</h3>"
@@ -410,7 +410,7 @@ async def delete_movie(
 
 
 @router.patch(
-    "/movies/{movie_id}/",
+    "/{movie_id}/",
     summary="Update a movie by ID",
     description=(
             "<h3>Update details of a specific movie by its unique ID.</h3>"
@@ -658,7 +658,7 @@ async def dislike_movie(
 
 
 @router.post(
-    "/movies/{movie_id}/comments",
+    "/{movie_id}/comments",
     response_model=CommentSchema,
     description="This endpoint create a new comment and save it in database.",
     responses={
@@ -707,7 +707,7 @@ async def create_comment(
 
 
 @router.get(
-    "/movies/{movie_id}/comments",
+    "/{movie_id}/comments",
     response_model=list[CommentSchema],
     description="Get a list of comments.",
     responses={
@@ -739,7 +739,7 @@ async def get_comments(
 
 
 @router.post(
-    "/movies/favorites/{movie_id}",
+    "/favorites/{movie_id}",
     summary="Add movie to favorites",
     description="Endpoing for add movies to favorite and save it in databse",
     responses= {
@@ -795,7 +795,7 @@ async def add_to_favorites(
 
 
 @router.delete(
-    "/movies/favorites/{movie_id}",
+    "/favorites/{movie_id}",
     summary="Remove movie from favorites",
     description="Endpoint for removing movies from favorite list.",
     responses= {
@@ -831,7 +831,7 @@ async def remove_from_favorites(
 
 
 @router.get(
-    "/movies/favorites/",
+    "/favorites/",
     response_model=FavoriteListResponseSchema,
     summary=("Get favorite movies list with functions"
              "of movie list, pagination, search, order."),

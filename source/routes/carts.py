@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/cart/",
+    "/",
     summary="Add movie to the cart.",
     description="Create cart item to the cart",
     responses={
