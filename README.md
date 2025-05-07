@@ -146,3 +146,16 @@ After all services are running, you can test the API by accessing the **OpenAPI 
 ```bash
 $ http://localhost:8000/docs
 ```
+
+### Some examples
+
+#### CRUD opearations
+
+![CRUD Example](screenshots/swagger_movie_screen.png)
+![Delete Example](screenshots/swagger_delete_screen.png)
+![Post Example](screenshots/swagger_post_screen.png)
+
+#### Request by Postman
+
+![Postman post](screenshots/postman_screen.png)
+![Postman get](screenshots/postman_get_screen.png)
