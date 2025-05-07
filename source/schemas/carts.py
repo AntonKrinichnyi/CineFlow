@@ -14,3 +14,8 @@ class CartItemResponseSchema(BaseModel):
 class CartResponseSchema(BaseModel):
     id: int
     items: List[CartItemResponseSchema]
+
+
+class CartCreateSchema(BaseModel):
+    user_id: int
+    movie_id: int

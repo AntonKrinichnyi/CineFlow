@@ -34,7 +34,7 @@ class OrderModel(Base):
     total_amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     user: Mapped[UserModel] = relationship(UserModel, back_populates="order")
-    order_items: Mapped["OrderItemModel"] = relationship("OrderItemModel", back_populates="order", cascade="all, delete-orphan")
+    order_items: Mapped[list["OrderItemModel"]] = relationship("OrderItemModel", back_populates="order", cascade="all, delete-orphan")
     payment: Mapped["PaymentModel"] = relationship("PaymentModel", back_populates="order")
     
 

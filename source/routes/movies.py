@@ -448,7 +448,7 @@ async def update_movie(
             selectinload(MovieModel.stars)
         )
     result = await db.execute(stmt)
-    movie = result.scalar().first()
+    movie = result.scalar_one_or_none()
 
     if not movie:
         raise HTTPException(
@@ -470,7 +470,7 @@ async def update_movie(
             await db.flush()
         movie.certification_id = certificate.id
 
-    if movie_data.genres is not None:
+    if movie_data.genres:
         genres = []
         for genre_name in movie_data.genres:
             stmt = select(GenreModel).where(GenreModel.name == genre_name)
@@ -483,7 +483,7 @@ async def update_movie(
             genres.append(genre)
         movie.genres = genres
 
-    if movie_data.directors is not None:
+    if movie_data.directors:
         directors = []
         for director_name in movie_data.directors:
             stmt = select(DirectorModel).where(DirectorModel.name == director_name)
@@ -496,7 +496,7 @@ async def update_movie(
             directors.append(director)
         movie.directors = directors
 
-    if movie_data.stars is not None:
+    if movie_data.stars:
         stars = []
         for star_name in movie_data.stars:
             stmt = select(StarModel).where(StarModel.name == star_name)
@@ -518,8 +518,24 @@ async def update_movie(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(IntegrityError)
         )
-
-    return MovieDetailSchema.model_validate(movie)
+        
+    stmt = select(func.count()).where(LikeModel.movie_id == movie_id)
+    result = await db.execute(stmt)
+    likes = result.scalar() or 0
+    
+    stmt = select(func.count()).where(DislikeModel.movie_id == movie_id)
+    result = await db.execute(stmt)
+    dislikes = result.scalar() or 0
+    
+    return MovieDetailSchema(
+            id=movie.id,
+            name=movie.name,
+            genres=[genre for genre in movie.genres],
+            directors=[director for director in movie.directors],
+            stars=[star for star in movie.stars],
+            likes=likes,
+            dislikes=dislikes
+        )
 
 
 @router.post(

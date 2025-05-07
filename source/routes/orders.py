@@ -55,9 +55,9 @@ router = APIRouter()
             }
         }   
 )
-async def create_order(user_id: int,
+async def create_order(data: OrderBaseSchema,
                        db: AsyncSession = Depends(get_sqlite_db)):
-    stmt = select(CartModel).where(CartModel.user_id == user_id)
+    stmt = select(CartModel).where(CartModel.user_id == data.user_id)
     result = await db.execute(stmt)
     cart = result.scalars().first()
     if not cart:
@@ -75,7 +75,7 @@ async def create_order(user_id: int,
     for item in cart_items:
         stmt = select(PurchasedModel).where(
             PurchasedModel.movie_id == item.movie_id,
-            PurchasedModel.user_id == user_id
+            PurchasedModel.user_id == data.user_id
         )
         result = await db.execute(stmt)
         purchased = result.scalars().first()
@@ -85,18 +85,19 @@ async def create_order(user_id: int,
         
         stmt = select(MovieModel).where(MovieModel.id == item.movie_id)
         result = await db.execute(stmt)
-        movie = result.scalars().first()
-        movies_in_order.append(movie)
+        single_movie = result.scalar_one_or_none()
+        movies_in_order.append(single_movie)
     if not movies_in_order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="No movies available for order")
     total_amount = sum([movie.price for movie in movies_in_order])
-    order = OrderModel(
-        user_id=user_id,
-        total_amount=total_amount,
-        status="pending",
-    )
+    
     try:
+        order = OrderModel(
+            user_id=data.user_id,
+            total_amount=total_amount,
+            status="pending",
+        )
         db.add(order)
         await db.commit()
         await db.refresh(order)
@@ -104,7 +105,7 @@ async def create_order(user_id: int,
             order_item = OrderItemModel(
                 order_id=order.id,
                 movie_id=movie.id,
-                price_at_order=movie.price,
+                price_at_order=movie.price
             )
             db.add(order_item)
             await db.commit()
@@ -114,7 +115,7 @@ async def create_order(user_id: int,
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Failed to create order")
     return OrderBaseSchema.model_validate(
-        user_id=user_id,
+        user_id=OrderModel.user_id,
         total_amount=total_amount,
         status="pending",
     )

@@ -11,7 +11,7 @@ from database.session_sqlite import get_sqlite_db
 from database.models.accounts import UserModel, UserGroupsEnum, UserGroupModel
 from database.models.movies import MovieModel
 from config.dependencies import get_accounts_email_notificator
-from schemas.carts import CartResponseSchema, CartItemResponseSchema
+from schemas.carts import CartResponseSchema, CartItemResponseSchema, CartCreateSchema
 from notifications.interfaces import EmailSenderInterface
 from database.models.carts import (PurchasedModel,
                                           CartModel,
@@ -49,51 +49,50 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED
 )
 async def create_cart(
-    movie_id: int,
-    user_id: int,
+    cart_data: CartCreateSchema,
     db: AsyncSession = Depends(get_sqlite_db),
 ):
-    stmt = select(UserModel).where(UserModel.id == user_id)
+    stmt = select(UserModel).where(UserModel.id == cart_data.user_id)
     result = await db.execute(stmt)
-    user = result.scalar().first()
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
 
-    stmt = select(PurchasedModel).where(and_(PurchasedModel.movie_id == movie_id,
-                                             PurchasedModel.user_id == user_id))
-    result = await db.cxecute(stmt)
-    purchase = result.scalar().first()
+    stmt = select(PurchasedModel).where(and_(PurchasedModel.movie_id == cart_data.movie_id,
+                                             PurchasedModel.user_id == cart_data.user_id))
+    result = await db.execute(stmt)
+    purchase = result.scalar_one_or_none()
     if purchase:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You have already bought this movie"
         )
 
-    stmt = select(MovieModel).where(MovieModel.id == movie_id)
-    result = await db.cxecute(stmt)
-    movie = result.scalar().first()
+    stmt = select(MovieModel).where(MovieModel.id == cart_data.movie_id)
+    result = await db.execute(stmt)
+    movie = result.scalar_one_or_none()
     if not movie:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Movie not found"
         )
 
-    stmt = select(CartModel).where(user_id == user_id)
-    result = await db.cxecute(stmt)
-    cart = result.scalar().first()
+    stmt = select(CartModel).where(CartModel.user_id == cart_data.user_id)
+    result = await db.execute(stmt)
+    cart = result.scalar_one_or_none()
     if not cart:
-        cart = CartModel(user_id=user_id)
+        cart = CartModel(user_id=cart_data.user_id)
         db.add(cart)
         await db.commit()
         await db.refresh(cart)
 
     stmt = select(CartItemModel).where(and_(CartItemModel.cart_id == cart.id,
-                                            CartItemModel.user_id == user_id))
-    result = await db.cxecute(stmt)
-    item_is_exist = result.scalar().first()
+                                            CartItemModel.movie_id == cart_data.movie_id))
+    result = await db.execute(stmt)
+    item_is_exist = result.scalar_one_or_none()
     if item_is_exist:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,7 +100,7 @@ async def create_cart(
         )
 
     try:
-        cart_item = CartItemModel(cart_id=cart.id, movie_id=movie_id)
+        cart_item = CartItemModel(cart_id=cart.id, movie_id=movie.id)
         db.add(cart_item)
         await db.commit()
         return {
