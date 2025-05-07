@@ -7,14 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.exc import SQLAlchemyError
 
-from source.database.session_sqlite import get_sqlite_db
-from source.config.dependencies import get_current_user
-from source.database.models.accounts import UserModel, UserGroupsEnum, UserGroupModel
-from source.database.models.movies import MovieModel
-from source.config.dependencies import get_accounts_email_notificator
-from source.schemas.carts import CartResponseSchema, CartItemResponseSchema
-from source.notifications.interfaces import EmailSenderInterface
-from source.database.models.carts import (PurchasedModel,
+from database.session_sqlite import get_sqlite_db
+from database.models.accounts import UserModel, UserGroupsEnum, UserGroupModel
+from database.models.movies import MovieModel
+from config.dependencies import get_accounts_email_notificator
+from schemas.carts import CartResponseSchema, CartItemResponseSchema
+from notifications.interfaces import EmailSenderInterface
+from database.models.carts import (PurchasedModel,
                                           CartModel,
                                           CartItemModel)
 
@@ -51,7 +50,7 @@ router = APIRouter()
 )
 async def create_cart(
     movie_id: int,
-    user_id: int = Depends(get_current_user),
+    user_id: int,
     db: AsyncSession = Depends(get_sqlite_db),
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
@@ -146,8 +145,8 @@ async def create_cart(
     status_code=status.HTTP_200_OK
 )
 async def get_cart(
-    db: AsyncSession = Depends(get_sqlite_db),
-    user_id: UserModel = Depends(get_current_user)
+    user_id: int,
+    db: AsyncSession = Depends(get_sqlite_db)
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
@@ -224,11 +223,11 @@ async def get_cart(
             },
         }
     },
-    satus_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK
 )
 async def clear_cart(
-    db: AsyncSession = Depends(get_sqlite_db),
-    user_id: UserModel = Depends(get_current_user)
+    user_id: int,
+    db: AsyncSession = Depends(get_sqlite_db)
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
@@ -300,8 +299,8 @@ async def remove_movie_from_cart(
     movie_id: int,
     cart_id: int,
     background_tasks: BackgroundTasks,
+    user_id: int,
     db: AsyncSession = Depends(get_sqlite_db),
-    user_id: int = Depends(get_current_user),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
 ):
     stmt = select(UserModel).where(UserModel.id == user_id)

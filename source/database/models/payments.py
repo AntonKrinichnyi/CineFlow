@@ -1,11 +1,11 @@
 import enum
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, DateTime, Float, Enum, DECIMAL, Integer
+from sqlalchemy import String, ForeignKey, DateTime, Enum, DECIMAL, Integer
 
-from source.database.base import Base
-from source.database.models.accounts import UserModel
-from source.database.models.orders import OrderModel, OrderItemModel
+from database.models.base import Base
+from database.models.accounts import UserModel
+from database.models.orders import OrderModel, OrderItemModel
 
 
 class PaymentStatusEnum(enum.Enum):
@@ -26,7 +26,7 @@ class PaymentModel(Base):
     external_payment_id: Mapped[str] = mapped_column(String(255), nullable=True)
     
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="payments")
-    order: Mapped["OrderModel"] = relationship("OrderModel", back_populates="payments")
+    order: Mapped["OrderModel"] = relationship("OrderModel", back_populates="payment")
     payment_item: Mapped["PaymentItemModel"] = relationship("PaymentItemModel", back_populates="payment")
 
 
@@ -35,7 +35,7 @@ class PaymentItemModel(Base):
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), nullable=False)
-    order_item_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    order_item_id: Mapped[int] = mapped_column(ForeignKey("order_items.id"), nullable=False)
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     
     payment: Mapped["PaymentModel"] = relationship("PaymentModel", back_populates="payment_item")

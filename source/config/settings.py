@@ -1,17 +1,17 @@
 import os
 from pathlib import Path
-
 from pydantic_settings import BaseSettings
 
 
 class BaseAppSettings(BaseSettings):
-    BASE_DIR: Path = Path(__file__).parent.parent
-    PATH_TO_DB: str = str(BASE_DIR / "database" / "theater.db")
+    BASE_DIR: Path = Path(__file__).parent
+    PATH_TO_DB: str = str(BASE_DIR / "test.db")
+    SQLITE_DB_URL: str = "sqlite+aiosqlite:///./test.db"
 
 
 class Settings(BaseAppSettings):
-    SECRET_KEY_ACCESS: str = os.getenv("SECRET_KEY_ACCESS", os.urandom(32))
-    SECRET_KEY_REFRESH: str = os.getenv("SECRET_KEY_REFRESH", os.urandom(32))
+    SECRET_KEY_ACCESS: str = os.getenv("SECRET_KEY_ACCESS", str(os.urandom(32)))
+    SECRET_KEY_REFRESH: str = os.getenv("SECRET_KEY_REFRESH", str(os.urandom(32)))
     JWT_SIGNING_ALGORITHM: str = os.getenv("JWT_SIGNING_ALGORITHM", "HS256")
     
     LOGIN_TIME_DAYS: int = 7

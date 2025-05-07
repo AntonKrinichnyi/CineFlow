@@ -7,12 +7,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from source.config.dependencies import (get_settings,
+from config.dependencies import (get_settings,
                                         get_accounts_email_notificator,
                                         get_jwt_auth_manager)
-from source.config.settings import BaseAppSettings
+from config.settings import BaseAppSettings
 from database.session_sqlite import get_sqlite_db
-from source.schemas.accounts import (
+from schemas.accounts import (
     UserRegistrationResponseSchema,
     UserRegistrationRequestSchema,
     MessageResponseSchema,
@@ -24,7 +24,7 @@ from source.schemas.accounts import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema
 )
-from source.database.models.accounts import (
+from database.models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupsEnum,
@@ -32,16 +32,33 @@ from source.database.models.accounts import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from source.notifications.email_sender import EmailSender
-from source.notifications.interfaces import EmailSenderInterface
-from source.security.interfaces import JWTAuthManagerInterface
-from source.security.exceptions import BaseSecurityError
+from notifications.email_sender import EmailSender
+from notifications.interfaces import EmailSenderInterface
+from security.interfaces import JWTAuthManagerInterface
+from security.exceptions import BaseSecurityError
 
 router = APIRouter()
 
+@router.post(
+    "/add/"
+)
+async def add_groups(db: AsyncSession = Depends(get_sqlite_db)):
+    user_group = UserGroupModel(name=UserGroupsEnum.USER)
+    moderator_group = UserGroupModel(name=UserGroupsEnum.MODERATOR)
+    admin_group = UserGroupModel(name=UserGroupsEnum.ADMIN)
+    
+    db.add(user_group)
+    db.add(moderator_group)
+    db.add(admin_group)
+    
+    await db.commit()
+    
+    return {
+        "message": "User groups added successfully."
+    }
 
 @router.post(
-    "register/",
+    "/register/",
     response_model=UserRegistrationResponseSchema,
     summary="User Registration",
     description="Registerr a new user with an emil and password.",
@@ -114,10 +131,10 @@ async def register_user(
     else:
         activation_link = "http://127.0.0.1/accounts/activate/"
         
-        await EmailSender.send_activation_email(
-            new_user.email,
-            activation_link
-        )
+        # await EmailSender.send_activation_email(
+        #     email=new_user.email,
+        #     activation_link=activation_link,
+        # )
         
         return UserRegistrationResponseSchema.model_validate(new_user)
 
@@ -156,7 +173,6 @@ async def register_user(
 async def active_account(
     activation_data: UserActivationRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
-    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
 ) -> MessageResponseSchema:
     stmt = (
         select(ActivationTokenModel)
@@ -170,8 +186,8 @@ async def active_account(
     result = await db.execute(stmt)
     token_record = result.scalars().first()
     
-    now_utc = datetime.now(datetime.timezone.utc)
-    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=datetime.timezone.utc) < now_utc:
+    now_utc = datetime.now(timezone.utc)
+    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
         if token_record:
             await db.delete(token_record)
             await db.commit()
@@ -193,10 +209,10 @@ async def active_account(
     
     login_link = "http://127.0.0.1/accounts/login/"
     
-    await EmailSender.send_activation_complete_email(
-        str(activation_data.email),
-        login_link
-    )
+    # await EmailSender.send_activation_complete_email(
+    #     str(activation_data.email),
+    #     login_link
+    # )
     
     return MessageResponseSchema(message="User account activated succesfuly.")
 
@@ -214,7 +230,6 @@ async def active_account(
 async def request_password_reset_token(
     data: PasswordResetRequestSchema,
     db: AsyncSession = Depends(get_sqlite_db),
-    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator)
 ) -> MessageResponseSchema:
     stmt = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
@@ -233,10 +248,10 @@ async def request_password_reset_token(
     
     password_reset_complete_link = "http://127.0.0.1/accounts/password-reset-complete/"
     
-    await EmailSender.send_password_reset_email(
-        str(data.email),
-        password_reset_complete_link
-    )
+    # await EmailSender.send_password_reset_email(
+    #     str(data.email),
+    #     password_reset_complete_link
+    # )
     
     return MessageResponseSchema(
         message="If you are registered, you will receive an email with instructions."

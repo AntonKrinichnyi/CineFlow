@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from source.schemas.payments import PaymentResponseSchema
-from source.database.session_sqlite import get_sqlite_db
-from source.database.models.payments import PaymentModel
-from source.database.models.orders import OrderModel, OrderItemModel
-from source.database.models.movies import MovieModel
+from schemas.payments import PaymentResponseSchema
+from database.session_sqlite import get_sqlite_db
+from database.models.payments import PaymentModel
+from database.models.orders import OrderModel, OrderItemModel
+from database.models.movies import MovieModel
 
 router = APIRouter()
 

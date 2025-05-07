@@ -20,7 +20,7 @@ celery_app.cong.update(
 
 celery_app.conf.beat_schedule = {
     "delete_expired_tokens_every_hour": {
-        "task": "source.notifications.tasks.delete_expired_activation_tokens",
+        "task": "notifications.tasks.delete_expired_activation_tokens",
         "schedule": crontab(hour="*/1")
     },
 }

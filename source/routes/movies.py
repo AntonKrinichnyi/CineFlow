@@ -5,12 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, contains_eager
 
-from source.database.session_sqlite import get_sqlite_db
-from source.config.dependencies import get_current_user
-from source.database.models.accounts import UserModel
-from source.database.models.movies import (
+from database.session_sqlite import get_sqlite_db
+from database.models.accounts import UserModel
+from database.models.movies import (
     MovieModel,
     GenreModel,
     StarModel,
@@ -22,7 +21,7 @@ from source.database.models.movies import (
     CommentModel,
     FavoriteModel
 )
-from source.schemas.movies import (
+from schemas.movies import (
     MovieListItemSchema,
     MovieListResponseSchema,
     MovieDetailSchema,
@@ -122,8 +121,8 @@ async def get_movie_list(
     else:
         stmt = stmt.order_by(MovieModel.year.desc())
 
-    stmt = select(func.count(MovieModel.id))
-    result = await db.execute(stmt)
+    count = select(func.count()).select_from(stmt.alias())
+    result = await db.execute(count)
     items = result.scalar() or 0
 
     if not items:
@@ -144,16 +143,29 @@ async def get_movie_list(
     total_pages = (items + per_page - 1) // per_page
 
     stmt = stmt.offset((page - 1) * per_page).limit(per_page)
-    result = await db.execute(stmt.options(
-        joinedload(MovieModel.certification),
-        selectinload(MovieModel.genres),
-        selectinload(MovieModel.directors),
-        selectinload(MovieModel.stars)
-    ))
+    if certification:
+        stmt = stmt.options(contains_eager(MovieModel.certification))
+    if genre:
+        stmt = stmt.options(contains_eager(MovieModel.genres))
+    if search:
+        stmt = stmt.options(
+        contains_eager(MovieModel.directors),
+        contains_eager(MovieModel.stars)
+    )
+    result = await db.execute(stmt)
     movies = result.unique().scalars().all()
 
     return MovieListResponseSchema(
-        movies=[MovieListItemSchema.model_validate(movie) for movie in movies],
+        movies=[MovieListItemSchema(
+            id=movie.id,
+            name=movie.name,
+            year=movie.year,
+            time=movie.time,
+            imdb=movie.imdb,
+            genres=movie.genres,
+            directors=movie.directors,
+            stars=movie.stars
+            ) for movie in movies],
         prev_page=f"/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
         next_page=f"/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None,
         total_pages=total_pages,
@@ -170,7 +182,6 @@ async def get_movie_list(
             "It accepts details such as name, date, genres, actors, languages, and "
             "other attributes. The associated country, genres, actors, and languages "
             "will be created or linked automatically.</h3>"),
-    status_code=status.HTTP_201_CREATED,
     responses={
         201: {
             "description": "Movie created successfully.",
@@ -199,7 +210,7 @@ async def create_movie(
             )
         )
     result = await db.execute(stmt)
-    existing = result.scalar().first()
+    existing = result.scalar_one_or_none()
     
     if existing:
         raise HTTPException(
@@ -255,7 +266,6 @@ async def create_movie(
             year=movie_data.year,
             time=movie_data.time,
             imdb=movie_data.imdb,
-            votes=movie_data.votes,
             meta_score=movie_data.meta_score,
             gross=movie_data.gross,
             description=movie_data.description,
@@ -269,9 +279,14 @@ async def create_movie(
         db.add(movie)
         await db.commit()
         await db.refresh(movie)
-        return MovieDetailSchema.model_validate(
-            movie,
-            ["genres", "directors", "stars"]
+        return MovieDetailSchema(
+            id=movie.id,
+            name=movie.name,
+            genres=genres_list,
+            stars=stars_list,
+            directors=directors_list,
+            likes=0,
+            dislikes=0
         )
 
     except IntegrityError:
@@ -316,7 +331,7 @@ async def get_movie_by_id(
         selectinload(MovieModel.comments).joinedload(CommentModel.user),
     )
     result = await db.execute(stmt)
-    movie = result.scalar().first()
+    movie = result.scalar_one_or_none()
 
     if not movie:
         raise HTTPException(
@@ -328,7 +343,7 @@ async def get_movie_by_id(
         comment.user_email = comment.user.email
 
     stmt = select(func.count()).where(LikeModel.movie_id == movie_id)
-    result = await db.execute()
+    result = await db.execute(stmt)
     likes = result.scalar() or 0
 
     stmt = select(func.count()).where(DislikeModel.movie_id == movie_id)
@@ -344,7 +359,6 @@ async def get_movie_by_id(
     movie_detail = MovieDetailSchema.model_validate(movie)
     movie_detail.likes = likes
     movie_detail.dislikes = dislikes
-    movie_detail.rating = rating
 
     return movie_detail
 
@@ -532,7 +546,7 @@ async def update_movie(
 )
 async def like_movie(
     movie_id: int,
-    user_id: UserModel = Depends(get_current_user),
+    user_id: int,
     db: AsyncSession = Depends(get_sqlite_db)
 ):
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
@@ -591,7 +605,7 @@ async def like_movie(
 )
 async def dislike_movie(
     movie_id: int,
-    user_id: UserModel = Depends(get_current_user),
+    user_id: int,
     db: AsyncSession = Depends(get_sqlite_db)
 ):
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
@@ -643,9 +657,9 @@ async def dislike_movie(
 )
 async def create_comment(
         movie_id: int,
+        current_user: int,
         comment_data: CommentCreateSchema,
         db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user),
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
@@ -688,7 +702,7 @@ async def create_comment(
             },
         }
     },
-    response_model=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK
 )
 async def get_comments(
         movie_id: int,
@@ -732,8 +746,8 @@ async def get_comments(
 )
 async def add_to_favorites(
         movie_id: int,
-        db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user),
+        current_user: int,
+        db: AsyncSession = Depends(get_sqlite_db)
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
@@ -764,7 +778,6 @@ async def add_to_favorites(
 
 @router.delete(
     "/movies/favorites/{movie_id}",
-    status_code=status.HTTP_200_OK,
     summary="Remove movie from favorites",
     description="Endpoint for removing movies from favorite list.",
     responses= {
@@ -781,10 +794,11 @@ async def add_to_favorites(
 )
 async def remove_from_favorites(
         favorite_id: int,
+        current_user: int,
         db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user),
 ):
-    stmt = select(FavoriteModel).where(FavoriteModel.id == favorite_id)
+    stmt = select(FavoriteModel).where(and_(FavoriteModel.id == favorite_id,
+                                            FavoriteModel.user_id == current_user))
     result = await db.execute(stmt)
     favorite = result.scalars().first()
     if not favorite:
@@ -817,6 +831,7 @@ async def remove_from_favorites(
     status_code=status.HTTP_200_OK
 )
 async def get_favorites(
+        current_user: int,
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=20),
         year: int = None,
@@ -826,13 +841,12 @@ async def get_favorites(
         certification: str = None,
         sort_by: str = Query(None),
         search: str = None,
-        db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user),
+        db: AsyncSession = Depends(get_sqlite_db)
 ):
     stmt = (
         select(MovieModel)
         .join(FavoriteModel)
-        .where(FavoriteModel.user_id == current_user.id)
+        .where(FavoriteModel.user_id == current_user)
     )
 
     if year:

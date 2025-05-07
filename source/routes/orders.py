@@ -4,14 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import and_
 
-from source.schemas.orders import OrderBaseSchema, MessageSchema
-from source.database.models.orders import OrderModel, OrderItemModel
-from source.database.models.accounts import UserModel
-from source.database.models.movies import MovieModel
-from source.database.models.carts import CartModel, CartItemModel, PurchasedModel
-from source.database.session_sqlite import get_sqlite_db 
-from source.notifications.email_sender import EmailSender
-from source.database.models.payments import PaymentModel
+from schemas.orders import OrderBaseSchema, MessageSchema
+from database.models.orders import OrderModel, OrderItemModel
+from database.models.accounts import UserModel
+from database.models.movies import MovieModel
+from database.models.carts import CartModel, CartItemModel, PurchasedModel
+from database.session_sqlite import get_sqlite_db 
+from notifications.email_sender import EmailSender
+from database.models.payments import PaymentModel
 
 router = APIRouter()
 

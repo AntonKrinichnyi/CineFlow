@@ -2,22 +2,22 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, relationship, mapped_column
+from sqlalchemy import func
 from sqlalchemy.types import (
     Text,
     DECIMAL,
     String,
     Float,
     Integer,
-    DateTime,
-    func
+    DateTime
 )
 from sqlalchemy.sql.schema import (ForeignKey,
                                    Table,
                                    Column,
                                    UniqueConstraint)
 
-from source.database.base import Base
-from source.database.models.accounts import UserModel
+from database.models.base import Base
+from database.models.accounts import UserModel
 
 
 MoviesGenresModel = Table(
@@ -160,7 +160,7 @@ class MovieModel(Base):
     )
     
     certification: Mapped[CertificationModel] = relationship(back_populates="movies")
-    genre: Mapped[list["GenreModel"]] = relationship(
+    genres: Mapped[list["GenreModel"]] = relationship(
         "GenreModel",
         secondary=MoviesGenresModel,
         back_populates="movies"
@@ -177,18 +177,23 @@ class MovieModel(Base):
     )
     comments: Mapped[list["CommentModel"]] = relationship(
         "CommentModel",
-        back_populates="movie",
-        cascade="all, delete-orphan"
+        back_populates="movie"
     )
     favorites: Mapped[list["FavoriteModel"]] = relationship(
         "FavoriteModel",
-        back_ppulates="movie",
-        cascade="all, delte-orphan"
+        back_populates="movie"
     )
     ratings: Mapped[float] = relationship(
         "RatingModel",
-        back_populates="movie",
-        cascade="all, delete-orphan"
+        back_populates="movie"
+    )
+    cart_items: Mapped["CartItemModel"] = relationship(
+        "CartItemModel",
+        back_populates="movie"
+    )
+    order_items: Mapped["OrderItemModel"] = relationship(
+        "OrderItemModel",
+        back_populates="movie"
     )
     
     __table_args__ = (
@@ -221,10 +226,10 @@ class FavoriteModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="favorites")
-    movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="favorites")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="favorites")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="favorites")
     
-    __table_args__ = (UniqueConstraint("user_id", "movie_id", name="unique_favorite"))
+    __table_args__ = (UniqueConstraint("user_id", "movie_id", name="unique_favorite"),)
 
 
 class RatingModel(Base):
@@ -235,7 +240,6 @@ class RatingModel(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="ratings")
     movie: Mapped[MovieModel] = relationship("MovieModel", back_populates="ratings")
 
 

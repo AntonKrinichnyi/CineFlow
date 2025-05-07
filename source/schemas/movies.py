@@ -80,14 +80,12 @@ class CommentCreateSchema(BaseModel):
 
 class MovieDetailSchema(BaseModel):
     id: int
+    name: str
     genres: list[GenreSchema]
     stars: list[StarSchema]
     directors: list[DirectorSchema]
-    certification: CertificationSchema
-    comments: list[CommentSchema]
-    likes: int
-    dislikes: int
-    rating: Optional[float] = None
+    likes: Optional[int] = 0
+    dislikes: Optional[int] = 0
     
     model_config = {
         "from_attributes": True,
@@ -100,26 +98,18 @@ class MovieCreateSchema(BaseModel):
     year: int
     time: int
     imdb: float = Field(..., ge=0, le=10)
-    meta_score: float | None = None
-    gross: float | None = None
+    meta_score: float
+    gross: float
     description: str
     price: float = Field(..., ge=0)
-    likes: int
-    dislikes: int
     genres: list[str]
     stars: list[str]
     directors: list[str]
-    certification: str
-    comments: list[CommentSchema]
+    certification: int
     
     model_config = {
         "from_attributes": True,
     }
-    
-    @field_validator("")
-    @classmethod
-    def validate_list_friends(cls, value: list[str]) -> list[str]:
-        return [item.title() for item in value]
 
 
 class MovieUpdateSchema(BaseModel):

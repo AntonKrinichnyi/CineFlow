@@ -24,4 +24,4 @@ def validate_email(user_email: str) -> str:
     except email_validator.EmailNotValidError as error:
         raise ValueError(str(error))
     else:
-        return user_email
+        return email

@@ -5,9 +5,9 @@ from sqlalchemy import (
     Integer, ForeignKey, UniqueConstraint, DateTime, func
 )
 
-from source.database.base import Base
-from source.database.models.accounts import UserModel 
-from source.database.models.movies import MovieModel
+from database.models.base import Base
+from database.models.accounts import UserModel 
+from database.models.movies import MovieModel
 
 
 class CartModel(Base):
@@ -22,10 +22,11 @@ class CartModel(Base):
     cart_items: Mapped[list["CartItemModel"]] = relationship(
         "CartItemModel",
         back_populates="cart",
+        foreign_keys="[CartItemModel.cart_id]",
         cascade="all, delete-orphan"
     )
-    user: Mapped[UserModel] = relationship(
-        UserModel,
+    user: Mapped["UserModel"] = relationship(
+        "UserModel",
         back_populates="cart"
     )
     
@@ -39,15 +40,15 @@ class CartItemModel(Base):
     __tablename__ = "cart_item"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    cart_id: Mapped[int] = mapped_column(Integer, ForeignKey("cart.id"), nullable=False)
-    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movie.id"), nullable=False)
+    cart_id: Mapped[int] = mapped_column(Integer, ForeignKey("carts.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False
     )
-    cart: Mapped[CartModel] = relationship(CartModel, back_populates="cart_items")
-    movie: Mapped[MovieModel] = relationship(MovieModel, back_populates="cart_items")
+    cart: Mapped["CartModel"] = relationship("CartModel", back_populates="cart_items")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="cart_items")
     
     __table_args__ = (UniqueConstraint("cart_id", "movie_id"),)
     

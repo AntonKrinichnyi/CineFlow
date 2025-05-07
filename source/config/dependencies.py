@@ -1,23 +1,18 @@
 import os
 
-from fastapi import Depends, status, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from jose import JWTError # type: ignore
+from fastapi import Depends
 
 from config.settings import BaseAppSettings, Settings, TestSettings
-from source.security.utils import get_token
 from security.interfaces import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
 from notifications.interfaces import EmailSenderInterface
 from notifications.email_sender import EmailSender
-from source.database.models.accounts import UserModel
-from source.database.session_sqlite import get_sqlite_db
 
 def get_settings() -> BaseAppSettings:
     environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
-        return TestSettings
-    return Settings
+        return TestSettings()
+    return Settings()
 
 def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> JWTAuthManagerInterface:
     return JWTAuthManager(
@@ -41,27 +36,3 @@ def get_accounts_email_notificator(
         password_email_template_name=settings.PASSWORD_RESET_TEMPLATE_NAME,
         password_complete_email_template_name=settings.PASSWORD_RESET_COMPLETE_TEMPLATE_NAME
     )
-
-
-async def get_current_user(
-        token: str = Depends(get_token),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        db: AsyncSession = Depends(get_sqlite_db)
-) -> UserModel:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Can't validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt_manager.decode_token(token)
-        user_id: int = int(payload.get("sub"))
-        if user_id is None:
-            raise credentials_exception
-    except (JWTError, ValueError, AttributeError):
-        raise credentials_exception
-
-    user = await db.get(UserModel, user_id)
-    if user is None:
-        raise credentials_exception
-    return user

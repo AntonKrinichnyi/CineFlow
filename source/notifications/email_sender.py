@@ -3,10 +3,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 import aiosmtplib
-from jinja2 import Enviroment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader
 
-from source.security.exceptions import BaseEmailError
-from source.notifications.interfaces import EmailSenderInterface
+from security.exceptions import BaseEmailError
+from notifications.interfaces import EmailSenderInterface
 
 
 class EmailSender(EmailSenderInterface):
@@ -34,7 +34,7 @@ class EmailSender(EmailSenderInterface):
         self._password_email_template_name = password_email_tempate_name
         self._password_complete_email_template_name = password_complete_email_template_name
         
-        self._env = Enviroment(loader=FileSystemLoader(template_dir))
+        self._env = Environment(loader=FileSystemLoader(template_dir))
     
     async def _send_email(self, recipient: str, subject: str, html_content: str) -> None:
         message = MIMEMultipart

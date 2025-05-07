@@ -2,9 +2,9 @@ from datetime import datetime
 
 from celery import Celery
 
-from source.notifications.celery import celery_app
-from source.database.models.accounts import ActivationTokenModel
-from source.database.session_sqlite import AsyncSQLiteSessionLocal
+from notifications.celery import celery_app
+from database.models.accounts import ActivationTokenModel
+from database.session_sqlite import AsyncSQLiteSessionLocal
 
 app = Celery("tasks", backend="redis://localhost", broker="redis://localhost")
 
