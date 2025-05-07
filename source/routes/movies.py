@@ -80,19 +80,28 @@ async def get_movie_list(
         year: int = None,
 ) -> MovieListResponseSchema:
     stmt = select(MovieModel).distinct()
+    stmt = stmt.join(MovieModel.directors).join(MovieModel.stars).join(MovieModel.genres).options(
+            selectinload(MovieModel.directors),
+            selectinload(MovieModel.stars),
+            selectinload(MovieModel.genres)
+        )
 
     if min_rating:
         stmt = stmt.where(MovieModel.imdb >= min_rating)
     if max_rating:
         stmt = stmt.where(MovieModel.imdb <= max_rating)
-    if genre:
-        stmt = stmt.join(MovieModel.genres).where(GenreModel.name == genre)
     if year:
         stmt = stmt.where(MovieModel.year == year)
+    
+        stmt = (stmt.join(MovieModel.genres)
+                .options(selectinload(MovieModel.genres))
+                .where(GenreModel.name == genre))
     if certification:
-        stmt = stmt.join(MovieModel.certification).where(CertificationModel.name == certification)
+        stmt = (stmt.join(MovieModel.certification)
+                .options(selectinload(MovieModel.genres))
+                .where(CertificationModel.name == certification))
     if search:
-        stmt = stmt.join(MovieModel.directors).join(MovieModel.stars).where(
+        stmt = stmt.where(
             or_(
                 MovieModel.name.ilike(f"%{search}%"),
                 MovieModel.description.ilike(f"%{search}%"),
@@ -100,6 +109,7 @@ async def get_movie_list(
                 StarModel.name.ilike(f"%{search}%")
             )
         )
+        
     if sort_by:
         sort_mapping = {
             "price": MovieModel.price,
@@ -121,9 +131,17 @@ async def get_movie_list(
     else:
         stmt = stmt.order_by(MovieModel.year.desc())
 
+    result = await db.execute(stmt)
+    movies = result.scalars().all()
+    if not movies:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movies not found."
+        )
+
     count = select(func.count()).select_from(stmt.alias())
     result = await db.execute(count)
-    items = result.scalar() or 0
+    items = result.scalar()
 
     if not items:
         raise HTTPException(
@@ -131,27 +149,11 @@ async def get_movie_list(
             detail="Movies not found."
         )
 
-    result = await db.execute(stmt)
-    movies = result.scalars().all()
+    stmt = stmt.offset((page - 1) * per_page).limit(per_page) 
 
-    if not movies:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Movies not found."
-        )
 
     total_pages = (items + per_page - 1) // per_page
 
-    stmt = stmt.offset((page - 1) * per_page).limit(per_page)
-    if certification:
-        stmt = stmt.options(contains_eager(MovieModel.certification))
-    if genre:
-        stmt = stmt.options(contains_eager(MovieModel.genres))
-    if search:
-        stmt = stmt.options(
-        contains_eager(MovieModel.directors),
-        contains_eager(MovieModel.stars)
-    )
     result = await db.execute(stmt)
     movies = result.unique().scalars().all()
 
@@ -162,9 +164,9 @@ async def get_movie_list(
             year=movie.year,
             time=movie.time,
             imdb=movie.imdb,
-            genres=movie.genres,
-            directors=movie.directors,
-            stars=movie.stars
+            genres=[genre for genre in movie.genres],
+            directors=[director for director in movie.directors],
+            stars=[star for star in movie.stars]
             ) for movie in movies],
         prev_page=f"/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
         next_page=f"/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None,
