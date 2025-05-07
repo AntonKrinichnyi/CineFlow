@@ -98,13 +98,11 @@ $ http://localhost:8000/docs
 ```
 ##### 8) Tests
 
-### 👉 Installing using GitHub
+### Installing using GitHub
 
 Python3 must be already installed
 
-### ✨ How to use it
-
-> Download the code 
+### Download the code 
 
 ```bash
 $ # Get the code
@@ -112,9 +110,7 @@ $ git clone https://github.com/VladimirDolhyi/cinema-fastapi.git
 $ cd cinema_fastapi
 ```
 
-#### 👉 Set Up
-
-> Install modules via `VENV`
+#### Set up virtual environment
 
 ```bash
 $ python -m venv venv
@@ -122,7 +118,7 @@ $ source venv/bin/activate (on macOS)
 $ venv\Scripts\activate (on Windows)
 ```
 
-> Install Dependencies with Poetry
+#### Install Dependencies with Poetry
 
 ```bash
 # Install Poetry if not already installed
@@ -132,19 +128,19 @@ $  pip install poetry
 $  poetry install
 ```
 
-> Apply migrations manually
+#### Apply migrations manually
 
 ```bash
 $ poetry run alembic upgrade head
 ```
 
-> Run the server
+#### Run the server
 
 ```bash
 $ poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-> Verify Setup      
+#### Verify Setup      
 After all services are running, you can test the API by accessing the **OpenAPI documentation**:
 
 ```bash
