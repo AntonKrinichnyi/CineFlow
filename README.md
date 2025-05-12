@@ -2,8 +2,7 @@
 
 ### Description
 
-Service for cinema management written on FastAPI.  
-Project for managing cinema with movies, shopping carts, orders and payments
+FastAPI-driven movie platform featuring Stripe, JWT auth, and pytest-verified reliability.
 
 ### Feachers:
 ##### 1) Authorization and Authentication
